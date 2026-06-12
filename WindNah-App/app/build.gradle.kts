@@ -40,6 +40,14 @@ android {
 }
 
 dependencies {
+    implementation(project(":feature:onboarding"))
+    implementation(project(":feature:discover"))
+    implementation(project(":feature:windpark-detail"))
+    implementation(project(":feature:facts"))
+    implementation(project(":feature:my-turbines"))
+    implementation(project(":feature:profile"))
+    implementation(project(":feature:auth"))
+
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.material3)

@@ -24,4 +24,18 @@ dependencyResolutionManagement {
 
 rootProject.name = "WindNah"
 include(":app")
+include(":core:common")
+include(":core:model")
+include(":core:designsystem")
+include(":core:network")
+include(":core:database")
+include(":core:data")
+include(":core:domain")
+include(":feature:onboarding")
+include(":feature:discover")
+include(":feature:windpark-detail")
+include(":feature:facts")
+include(":feature:my-turbines")
+include(":feature:profile")
+include(":feature:auth")
  
