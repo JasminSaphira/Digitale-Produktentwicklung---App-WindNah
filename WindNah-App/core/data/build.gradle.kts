@@ -1,6 +1,8 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.hilt.android)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -28,4 +30,7 @@ dependencies {
     implementation(project(":core:network"))
     implementation(project(":core:database"))
     implementation(libs.androidx.core.ktx)
+    implementation(libs.hilt.android)
+    implementation(libs.androidx.datastore.preferences)
+    ksp(libs.hilt.android.compiler)
 }

@@ -6,42 +6,132 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FactCheck
+import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.FactCheck
+import androidx.compose.material.icons.outlined.Map
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
+import com.example.windnah.navigation.ROUTE_DISCOVER
+import com.example.windnah.navigation.ROUTE_FACTS
+import com.example.windnah.navigation.ROUTE_MY_TURBINES
+import com.example.windnah.navigation.ROUTE_PROFILE
+import com.example.windnah.navigation.WindNahNavGraph
 import com.example.windnah.ui.theme.WindNahTheme
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             WindNahTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                val appViewModel: AppViewModel = hiltViewModel()
+                val startDestination by appViewModel.startDestination.collectAsStateWithLifecycle()
+
+                startDestination?.let { destination ->
+                    WindNahApp(startDestination = destination)
                 }
             }
         }
     }
 }
 
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
+private data class BottomNavItem(
+    val route: String,
+    val label: String,
+    val selectedIcon: ImageVector,
+    val unselectedIcon: ImageVector,
+)
 
-@Preview(showBackground = true)
+private val bottomNavItems = listOf(
+    BottomNavItem(
+        route = ROUTE_DISCOVER,
+        label = "Entdecken",
+        selectedIcon = Icons.Filled.Map,
+        unselectedIcon = Icons.Outlined.Map,
+    ),
+    BottomNavItem(
+        route = ROUTE_FACTS,
+        label = "Fakten",
+        selectedIcon = Icons.Filled.FactCheck,
+        unselectedIcon = Icons.Outlined.FactCheck,
+    ),
+    BottomNavItem(
+        route = ROUTE_MY_TURBINES,
+        label = "Meine Anlagen",
+        selectedIcon = Icons.Filled.Star,
+        unselectedIcon = Icons.Outlined.Star,
+    ),
+    BottomNavItem(
+        route = ROUTE_PROFILE,
+        label = "Profil",
+        selectedIcon = Icons.Filled.Person,
+        unselectedIcon = Icons.Outlined.Person,
+    ),
+)
+
+private val bottomNavRoutes = bottomNavItems.map { it.route }.toSet()
+
 @Composable
-fun GreetingPreview() {
-    WindNahTheme {
-        Greeting("Android")
+private fun WindNahApp(startDestination: String) {
+    val navController = rememberNavController()
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = backStackEntry?.destination?.route
+
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        bottomBar = {
+            if (currentRoute in bottomNavRoutes) {
+                NavigationBar {
+                    bottomNavItems.forEach { item ->
+                        val selected = currentRoute == item.route
+                        NavigationBarItem(
+                            selected = selected,
+                            onClick = {
+                                navController.navigate(item.route) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            },
+                            icon = {
+                                Icon(
+                                    imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
+                                    contentDescription = item.label,
+                                )
+                            },
+                            label = { Text(item.label) },
+                        )
+                    }
+                }
+            }
+        },
+    ) { innerPadding ->
+        WindNahNavGraph(
+            navController = navController,
+            modifier = Modifier.padding(innerPadding),
+            startDestination = startDestination,
+        )
     }
 }
