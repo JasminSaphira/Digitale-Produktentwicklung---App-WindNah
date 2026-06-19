@@ -44,9 +44,11 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            WindNahTheme {
-                val appViewModel: AppViewModel = hiltViewModel()
-                val startDestination by appViewModel.startDestination.collectAsStateWithLifecycle()
+            val appViewModel: AppViewModel = hiltViewModel()
+            val startDestination by appViewModel.startDestination.collectAsStateWithLifecycle()
+            val darkModeEnabled by appViewModel.darkModeEnabled.collectAsStateWithLifecycle()
+
+            WindNahTheme(darkTheme = darkModeEnabled) {
 
                 if (startDestination == null) {
                     LaunchScreen()

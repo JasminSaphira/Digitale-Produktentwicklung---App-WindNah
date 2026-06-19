@@ -16,11 +16,19 @@ class UserPreferencesRepositoryImpl @Inject constructor(
     override val hasCompletedOnboarding: Flow<Boolean> =
         dataStore.data.map { it[KEY_ONBOARDING_COMPLETED] ?: false }
 
+    override val isDarkModeEnabled: Flow<Boolean> =
+        dataStore.data.map { it[KEY_DARK_MODE_ENABLED] ?: false }
+
     override suspend fun setOnboardingCompleted() {
         dataStore.edit { it[KEY_ONBOARDING_COMPLETED] = true }
     }
 
+    override suspend fun setDarkModeEnabled(enabled: Boolean) {
+        dataStore.edit { it[KEY_DARK_MODE_ENABLED] = enabled }
+    }
+
     companion object {
         private val KEY_ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
+        private val KEY_DARK_MODE_ENABLED = booleanPreferencesKey("dark_mode_enabled")
     }
 }

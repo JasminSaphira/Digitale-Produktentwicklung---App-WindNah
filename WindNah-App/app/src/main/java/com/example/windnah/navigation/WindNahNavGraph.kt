@@ -5,6 +5,8 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.windnah.feature.auth.LoginScreen
+import com.windnah.feature.auth.RegistrationScreen
 import com.windnah.feature.discover.DiscoverScreen
 import com.windnah.feature.facts.FactsScreen
 import com.windnah.feature.myturbines.MyTurbinesScreen
@@ -17,6 +19,8 @@ const val ROUTE_FACTS = "facts"
 const val ROUTE_MY_TURBINES = "my_turbines"
 const val ROUTE_PROFILE = "profile"
 const val ROUTE_WIND_FARM_DETAIL = "wind_farm_detail/{windFarmId}"
+const val ROUTE_LOGIN = "login"
+const val ROUTE_REGISTER = "register"
 
 fun windFarmDetailRoute(windFarmId: String) = "wind_farm_detail/$windFarmId"
 
@@ -58,7 +62,21 @@ fun WindNahNavGraph(
             )
         }
         composable(ROUTE_PROFILE) {
-            ProfileScreen()
+            ProfileScreen(
+                onLoginClick = { navController.navigate(ROUTE_LOGIN) }
+            )
+        }
+        composable(ROUTE_LOGIN) {
+            LoginScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToRegister = { navController.navigate(ROUTE_REGISTER) },
+            )
+        }
+        composable(ROUTE_REGISTER) {
+            RegistrationScreen(
+                onNavigateBack = { navController.popBackStack() },
+            )
         }
     }
 }
+

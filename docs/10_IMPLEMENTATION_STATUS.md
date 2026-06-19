@@ -1,7 +1,7 @@
 # WindNah – Implementation Status
 
 Version: 1.0
-Last Updated: 2026-06-19
+ Last Updated: 2026-06-19
 
 ---
 
@@ -39,10 +39,14 @@ Duration: Days 1–3
 ### core:domain
 - `UserPreferencesRepository` interface
   - `hasCompletedOnboarding: Flow<Boolean>`
+  - `isDarkModeEnabled: Flow<Boolean>`
   - `suspend fun setOnboardingCompleted()`
+  - `suspend fun setDarkModeEnabled(Boolean)`
 
 ### core:data
 - `UserPreferencesRepositoryImpl` (DataStore<Preferences>)
+  - Key `onboarding_completed` (Boolean, default false)
+  - Key `dark_mode_enabled` (Boolean, default false = Light)
 - `DataModule` (Hilt, `@InstallIn(SingletonComponent::class)`)
 
 ### core:designsystem
@@ -53,46 +57,46 @@ Duration: Days 1–3
 
 ### app
 - `WindNahTheme` (Material 3, WindNah green palette)
-- `AppViewModel` — reads onboarding state, exposes `StateFlow<String?>` startDestination
-- `MainActivity` — `@AndroidEntryPoint`, zeigt `LaunchScreen` während `startDestination == null`, danach `WindNahApp`
-- `WindNahNavGraph` — routes: `onboarding`, `discover`, `facts`, `my_turbines`, `profile`, `wind_farm_detail/{windFarmId}`
+- `AppViewModel` — exposes `StateFlow<String?>` startDestination + `StateFlow<Boolean>` darkModeEnabled
+- `MainActivity` — `@AndroidEntryPoint`, zeigt `LaunchScreen` während `startDestination == null`, danach `WindNahApp`; übergibt `darkTheme = darkModeEnabled` an `WindNahTheme`
+- `WindNahNavGraph` — routes: `onboarding`, `discover`, `facts`, `my_turbines`, `profile`, `wind_farm_detail/{windFarmId}`, `login`, `register`
 - Bottom Navigation — 4 tabs: Entdecken / Fakten / Meine Anlagen / Profil (hidden on onboarding)
 
 ---
 
-# Milestone 2 – Core Navigation & UI 🔄 IN PROGRESS
+# Milestone 2 – Core Navigation & UI ✅ DONE
 
 Duration: Days 3–6
 
 ## Delivered
 
 ### feature:onboarding
-- `OnboardingScreen` — 3-page HorizontalPager
-  - Seite 1: Air-Icon — "Willkommen bei WindNah"
-  - Seite 2: Map-Icon — "Erkunde die Karte"
-  - Seite 3: Lightbulb-Icon — "Verstehe die Fakten"
-  - Buttons: "Überspringen" / "Weiter" / "Loslegen"
-  - Page indicator dots
+- `OnboardingScreen` — 3-page HorizontalPager, visuell nach Figma (nodes 120:2152 / 120:2149 / 120:2130)
+  - Header: WindNah-Logo (40 dp) + App-Name (titleMedium)
+  - Media-Bilder pro Seite (330 dp, 24 dp Radius)
+  - Seiten 1 & 2: rechts-ausgerichteter Pill-Button „Weiter"
+  - Seite 3: „Standort freigeben & starten" (ACCESS_COARSE_LOCATION → completeOnboarding) + „ohne Standort starten" (direkt completeOnboarding) + Footer-Hinweis
+  - Kein Überspringen-Button, keine Page-Dots (entspricht Figma)
 - `OnboardingViewModel` — speichert Onboarding-Abschluss in DataStore
 - First-launch detection: erste App-Öffnung → Onboarding, danach direkt Entdecken
 - `LaunchScreen` — Branding-Splash (Figma 120:2155); Logo + App-Name + `CircularProgressIndicator` solange DataStore lädt
-
-## Pending
+- Drawable-Assets: `onboarding_media_1/2/3.png` (aus Figma exportiert)
 
 ### feature:profile
-- [ ] `ProfileScreen` — vollständiger Settings-Screen
-  - Sektionen: Erscheinungsbild (Dark Mode), Datenquellen, Impressum
-  - Aktuell: Placeholder
+- `ProfileScreen` — vollständiger Settings-Screen
+  - Sektion **Erscheinungsbild**: Dark Mode Switch → schreibt DataStore via `ProfileViewModel`
+  - Sektion **Konto**: „Anmelden"-Button → öffnet `LoginBottomSheet` (lokal, kein Route)
+  - Sektion **Datenquellen**: MaStR + DWD Info-Texte
+  - Sektion **Über die App**: Version + Impressum-Placeholder
+- `ProfileViewModel` (`@HiltViewModel`) — liest/schreibt `isDarkModeEnabled` via `UserPreferencesRepository`
+- `LoginBottomSheet` (private Composable in ProfileScreen) — Google (Stub/M5) + E-Mail-Login + „Nicht jetzt"
 
 ### feature:auth
-- [ ] `LoginBottomSheet` — kontextuelles Login (Google / E-Mail / "Nicht jetzt")
-- [ ] `LoginScreen` — E-Mail + Passwort + Google, Link zu Registrierung
-- [ ] `RegistrationScreen` — Name + E-Mail + Passwort
+- `LoginScreen` — E-Mail + Passwort + Google-Button (Stub/M5) + Link zu Registrierung
+- `RegistrationScreen` — Name + E-Mail + Passwort
+- Build-Config: Hilt, KSP, `hilt-navigation-compose`, `lifecycle-viewmodel-compose`, `material-icons-extended` ergänzt
 
-### Navigation
-- [ ] Routes für `login` und `register` im NavGraph eintragen
-
-## Definition of Done
+## Definition of Done ✅
 Alle Screens erreichbar. Navigation Graph komplett.
 
 ---
@@ -197,9 +201,8 @@ Duration: Days 19–21
 
 | Issue | Status |
 |-------|--------|
-| `feature:auth` build.gradle.kts fehlt Hilt + KSP + icons-extended | Pending — benötigt vor Auth-Screen-Implementierung |
-| `feature:profile` build.gradle.kts fehlt icons-extended | Pending |
 | Placeholder-Screens: Discover, Facts, MyTurbines | Werden in M3/M7 ersetzt |
+| Google Sign-In / Firebase Auth nicht integriert | Geplant für M5 — Auth-Screens sind UI-Stubs |
 
 ---
 
@@ -212,6 +215,10 @@ Duration: Days 19–21
 | MainActivity | `app/src/main/java/com/example/windnah/MainActivity.kt` |
 | OnboardingScreen | `feature/onboarding/src/main/java/com/windnah/feature/onboarding/OnboardingScreen.kt` |
 | LaunchScreen | `feature/onboarding/src/main/java/com/windnah/feature/onboarding/LaunchScreen.kt` |
+| ProfileScreen | `feature/profile/src/main/java/com/windnah/feature/profile/ProfileScreen.kt` |
+| ProfileViewModel | `feature/profile/src/main/java/com/windnah/feature/profile/ProfileViewModel.kt` |
+| LoginScreen | `feature/auth/src/main/java/com/windnah/feature/auth/LoginScreen.kt` |
+| RegistrationScreen | `feature/auth/src/main/java/com/windnah/feature/auth/RegistrationScreen.kt` |
 | DataModule (Hilt) | `core/data/src/main/java/com/windnah/core/data/di/DataModule.kt` |
 | UserPrefsRepo Interface | `core/domain/src/main/java/com/windnah/core/domain/repository/UserPreferencesRepository.kt` |
 | UserPrefsRepo Impl | `core/data/src/main/java/com/windnah/core/data/repository/UserPreferencesRepositoryImpl.kt` |

@@ -24,4 +24,11 @@ class AppViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = null,
         )
+
+    val darkModeEnabled: StateFlow<Boolean> = userPreferencesRepository.isDarkModeEnabled
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = false,
+        )
 }
