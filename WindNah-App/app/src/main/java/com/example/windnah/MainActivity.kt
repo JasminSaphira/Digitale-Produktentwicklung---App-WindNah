@@ -35,6 +35,7 @@ import com.example.windnah.navigation.ROUTE_MY_TURBINES
 import com.example.windnah.navigation.ROUTE_PROFILE
 import com.example.windnah.navigation.WindNahNavGraph
 import com.example.windnah.ui.theme.WindNahTheme
+import com.windnah.feature.onboarding.LaunchScreen
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -47,8 +48,10 @@ class MainActivity : ComponentActivity() {
                 val appViewModel: AppViewModel = hiltViewModel()
                 val startDestination by appViewModel.startDestination.collectAsStateWithLifecycle()
 
-                startDestination?.let { destination ->
-                    WindNahApp(startDestination = destination)
+                if (startDestination == null) {
+                    LaunchScreen()
+                } else {
+                    WindNahApp(startDestination = startDestination!!)
                 }
             }
         }

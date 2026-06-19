@@ -1,7 +1,7 @@
 # WindNah – Implementation Status
 
 Version: 1.0
-Last Updated: 2026-06-16
+Last Updated: 2026-06-19
 
 ---
 
@@ -54,7 +54,7 @@ Duration: Days 1–3
 ### app
 - `WindNahTheme` (Material 3, WindNah green palette)
 - `AppViewModel` — reads onboarding state, exposes `StateFlow<String?>` startDestination
-- `MainActivity` — `@AndroidEntryPoint`, shows app only when startDestination resolved
+- `MainActivity` — `@AndroidEntryPoint`, zeigt `LaunchScreen` während `startDestination == null`, danach `WindNahApp`
 - `WindNahNavGraph` — routes: `onboarding`, `discover`, `facts`, `my_turbines`, `profile`, `wind_farm_detail/{windFarmId}`
 - Bottom Navigation — 4 tabs: Entdecken / Fakten / Meine Anlagen / Profil (hidden on onboarding)
 
@@ -75,11 +75,9 @@ Duration: Days 3–6
   - Page indicator dots
 - `OnboardingViewModel` — speichert Onboarding-Abschluss in DataStore
 - First-launch detection: erste App-Öffnung → Onboarding, danach direkt Entdecken
+- `LaunchScreen` — Branding-Splash (Figma 120:2155); Logo + App-Name + `CircularProgressIndicator` solange DataStore lädt
 
 ## Pending
-
-### feature:onboarding
-- [ ] `LaunchScreen` — Branding-Splash während DataStore lädt
 
 ### feature:profile
 - [ ] `ProfileScreen` — vollständiger Settings-Screen
@@ -93,7 +91,6 @@ Duration: Days 3–6
 
 ### Navigation
 - [ ] Routes für `login` und `register` im NavGraph eintragen
-- [ ] LaunchScreen als initiale Route
 
 ## Definition of Done
 Alle Screens erreichbar. Navigation Graph komplett.
@@ -214,6 +211,7 @@ Duration: Days 19–21
 | AppViewModel | `app/src/main/java/com/example/windnah/AppViewModel.kt` |
 | MainActivity | `app/src/main/java/com/example/windnah/MainActivity.kt` |
 | OnboardingScreen | `feature/onboarding/src/main/java/com/windnah/feature/onboarding/OnboardingScreen.kt` |
+| LaunchScreen | `feature/onboarding/src/main/java/com/windnah/feature/onboarding/LaunchScreen.kt` |
 | DataModule (Hilt) | `core/data/src/main/java/com/windnah/core/data/di/DataModule.kt` |
 | UserPrefsRepo Interface | `core/domain/src/main/java/com/windnah/core/domain/repository/UserPreferencesRepository.kt` |
 | UserPrefsRepo Impl | `core/data/src/main/java/com/windnah/core/data/repository/UserPreferencesRepositoryImpl.kt` |
