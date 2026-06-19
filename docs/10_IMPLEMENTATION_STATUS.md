@@ -101,17 +101,31 @@ Alle Screens erreichbar. Navigation Graph komplett.
 
 ---
 
-# Milestone 3 – Wind Farm Discovery ⏳ NOT STARTED
+# Milestone 3 – Wind Farm Discovery ⚙️ IN PROGRESS
 
 Duration: Days 5–9
 
-## Planned
+## Delivered / In Progress
 
-- Google Maps Integration
-- Marker-Rendering + Clustering
-- Suche nach Ort / PLZ
-- Filter: Status, Bundesland
-- Wind Farm Preview Card (Bottom Sheet nach Marker-Tap)
+- Discover/Entdecken UI visuell an Figma node `138-2193` ausgerichtet, unter Beachtung von Material 3 und dem WindNah Design System
+- Google Maps wurde entfernt
+- Discover nutzt jetzt einen OpenStreetMap-basierten Ansatz mit `osmdroid`
+- Discover UI weiter in Richtung Figma node `138-2193` poliert: saubereres Suchfeld, klarere Abstaende, verfeinerte Chips/FABs und verbesserte Empty/Loading/Error States
+- Map-first Layout mit Suchfeld, Status-Filtern und Bundesland-Auswahlliste
+- Windpark-Marker mit Mock-Daten
+- Marker-Tap oeffnet eine visuell ueberarbeitete Bottom Preview / Bottom Sheet
+- Preview zeigt Name, Ort, Status, Anlagenzahl, installierte Leistung, versorgte Haushalte und CO2-Einsparung
+- CTA "Details ansehen" navigiert ueber bestehende Route `wind_farm_detail/{windFarmId}`
+- `DiscoverViewModel`, `DiscoverUiState` und `DiscoverUiEvent` eingefuehrt
+- Mock-Windparkdaten liegen hinter `WindFarmRepository` / `GetDiscoverWindFarmsUseCase`
+- Region-, Status- sowie ZIP-/Ortssuche filtern die tatsaechlich angezeigten Windparks ueber ViewModel/UseCase
+- Ein Material-3-Recenter-Button wurde ergaenzt; Standort bleibt optional, wird nicht gespeichert und nur fuer das Zentrieren verwendet
+
+## Not Yet Done
+
+- Marker-Clustering
+- Real MaStR/DWD API integration
+- Vollstaendige Windpark-Detailseite
 
 ---
 
@@ -201,7 +215,8 @@ Duration: Days 19–21
 
 | Issue | Status |
 |-------|--------|
-| Placeholder-Screens: Discover, Facts, MyTurbines | Werden in M3/M7 ersetzt |
+| Placeholder-Screens: Facts, MyTurbines | Werden in M7 ersetzt |
+| Discover nutzt Mock-Windparkdaten | Real-Datenintegration fuer M5 geplant |
 | Google Sign-In / Firebase Auth nicht integriert | Geplant für M5 — Auth-Screens sind UI-Stubs |
 
 ---
@@ -214,6 +229,8 @@ Duration: Days 19–21
 | AppViewModel | `app/src/main/java/com/example/windnah/AppViewModel.kt` |
 | MainActivity | `app/src/main/java/com/example/windnah/MainActivity.kt` |
 | OnboardingScreen | `feature/onboarding/src/main/java/com/windnah/feature/onboarding/OnboardingScreen.kt` |
+| DiscoverScreen | `feature/discover/src/main/java/com/windnah/feature/discover/DiscoverScreen.kt` |
+| DiscoverViewModel | `feature/discover/src/main/java/com/windnah/feature/discover/DiscoverViewModel.kt` |
 | LaunchScreen | `feature/onboarding/src/main/java/com/windnah/feature/onboarding/LaunchScreen.kt` |
 | ProfileScreen | `feature/profile/src/main/java/com/windnah/feature/profile/ProfileScreen.kt` |
 | ProfileViewModel | `feature/profile/src/main/java/com/windnah/feature/profile/ProfileViewModel.kt` |

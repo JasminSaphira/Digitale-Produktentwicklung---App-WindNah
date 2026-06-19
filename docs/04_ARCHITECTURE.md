@@ -77,7 +77,7 @@ Navigation Compose
 
 ## Maps
 
-Google Maps Compose
+OpenStreetMap / osmdroid
 
 ## Authentication
 

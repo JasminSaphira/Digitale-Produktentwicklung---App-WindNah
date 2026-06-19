@@ -11,4 +11,5 @@ data class WindFarm(
     val turbineCount: Int,
     val totalCapacityKw: Double,
     val commissioningYear: Int?,
+    val postalCode: String? = null,
 )

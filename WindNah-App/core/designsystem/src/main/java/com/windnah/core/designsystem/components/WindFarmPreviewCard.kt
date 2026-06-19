@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Co2
 import androidx.compose.material.icons.outlined.EnergySavingsLeaf
+import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.WindPower
 import androidx.compose.material3.Button
 import androidx.compose.material3.ElevatedCard
@@ -21,13 +23,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.windnah.core.model.EnergyMetrics
 import com.windnah.core.model.WindFarm
+import java.util.Locale
 
 @Composable
 fun WindFarmPreviewCard(
     windFarm: WindFarm,
     onDetailsClick: () -> Unit,
     modifier: Modifier = Modifier,
+    energyMetrics: EnergyMetrics? = null,
 ) {
     ElevatedCard(
         modifier = modifier,
@@ -58,33 +63,51 @@ fun WindFarmPreviewCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Outlined.WindPower,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                PreviewMetricRow(
+                    icon = {
+                        Icon(
+                            Icons.Outlined.WindPower,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                    text = "${windFarm.turbineCount} Anlagen",
+                )
+                PreviewMetricRow(
+                    icon = {
+                        Icon(
+                            Icons.Outlined.EnergySavingsLeaf,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                    text = "${String.format(Locale.GERMANY, "%.1f", windFarm.totalCapacityKw / 1000)} MW installiert",
+                )
+                if (energyMetrics != null) {
+                    PreviewMetricRow(
+                        icon = {
+                            Icon(
+                                Icons.Outlined.Home,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                        text = "${String.format(Locale.GERMANY, "%,d", energyMetrics.householdsSupplied)} Haushalte versorgt",
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "${windFarm.turbineCount} Anlagen",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Outlined.EnergySavingsLeaf,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(
-                        text = "${"%.1f".format(windFarm.totalCapacityKw / 1000)} MW",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    PreviewMetricRow(
+                        icon = {
+                            Icon(
+                                Icons.Outlined.Co2,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        },
+                        text = "${String.format(Locale.GERMANY, "%,.0f", energyMetrics.co2SavingsTonnesPerYear)} t CO2/Jahr eingespart",
                     )
                 }
             }
@@ -95,8 +118,28 @@ fun WindFarmPreviewCard(
                 onClick = onDetailsClick,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Details anzeigen")
+                Text("Details ansehen")
             }
         }
+    }
+}
+
+@Composable
+private fun PreviewMetricRow(
+    icon: @Composable () -> Unit,
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        icon()
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }

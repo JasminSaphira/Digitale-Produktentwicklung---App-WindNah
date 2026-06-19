@@ -1,21 +1,1187 @@
 package com.windnah.feature.discover
 
+import android.Manifest
+import android.content.Context
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Rect
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ArrowDropDown
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Explore
+import androidx.compose.material.icons.outlined.Layers
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.MyLocation
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.graphics.createBitmap
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.windnah.core.designsystem.components.StatusChip
+import com.windnah.core.model.EnergyMetrics
+import com.windnah.core.model.WindFarm
+import com.windnah.core.model.WindFarmPreview
+import com.windnah.core.model.WindFarmStatus
+import org.osmdroid.config.Configuration
+import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.util.GeoPoint
+import org.osmdroid.views.MapView
+import org.osmdroid.views.overlay.Marker
+import kotlin.math.roundToInt
+
+private val GermanyCenter = GeoPoint(51.1657, 10.4515)
+private const val DefaultMapZoom = 6.0
+private const val DetailMapZoom = 11.2
+private val FigmaSearchTop = 67.dp
+private val FigmaHorizontalStart = 20.dp
+private val FigmaHorizontalEnd = 13.dp
+private val FigmaSearchHeight = 56.dp
+private val FigmaFilterSpacing = 13.dp
+private val FigmaFilterHeight = 32.dp
+private val FigmaLayerTop = 190.dp
+private val FigmaSnackbarBottom = 30.dp
 
 @Composable
 fun DiscoverScreen(
     onWindFarmClick: (windFarmId: String) -> Unit = {},
     modifier: Modifier = Modifier,
+    viewModel: DiscoverViewModel = hiltViewModel(),
 ) {
-    Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text("Entdecken – Coming soon")
+    val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val locationProvider = remember(context) { DiscoverLocationProvider(context) }
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        viewModel.onEvent(DiscoverUiEvent.LocationPermissionUpdated(granted))
+    }
+
+    LaunchedEffect(locationProvider) {
+        viewModel.onEvent(
+            DiscoverUiEvent.LocationPermissionUpdated(
+                granted = locationProvider.hasLocationPermission(),
+            ),
+        )
+    }
+
+    var handledLocationRequestToken by remember { mutableIntStateOf(0) }
+    LaunchedEffect(uiState.pendingLocationRequestToken, uiState.hasLocationPermission) {
+        val requestToken = uiState.pendingLocationRequestToken
+        if (!uiState.hasLocationPermission || requestToken == 0 || requestToken == handledLocationRequestToken) {
+            return@LaunchedEffect
+        }
+
+        handledLocationRequestToken = requestToken
+        locationProvider.requestCurrentLocation(
+            onResolved = { latitude, longitude ->
+                viewModel.onEvent(DiscoverUiEvent.CurrentLocationResolved(latitude, longitude))
+            },
+            onUnavailable = {
+                viewModel.onEvent(DiscoverUiEvent.CurrentLocationUnavailable)
+            },
+        )
+    }
+
+    DiscoverContent(
+        uiState = uiState,
+        onEvent = viewModel::onEvent,
+        onWindFarmClick = onWindFarmClick,
+        onRequestLocationPermission = {
+            locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+        },
+        modifier = modifier,
+    )
+}
+
+@Composable
+private fun DiscoverContent(
+    uiState: DiscoverUiState,
+    onEvent: (DiscoverUiEvent) -> Unit,
+    onWindFarmClick: (windFarmId: String) -> Unit,
+    onRequestLocationPermission: () -> Unit,
+    modifier: Modifier = Modifier,
+    showMapView: Boolean = true,
+) {
+    val hasActiveFilters = uiState.searchQuery.isNotBlank() ||
+        uiState.selectedStatus != null ||
+        uiState.selectedFederalState != null
+
+    Box(modifier = modifier.fillMaxSize()) {
+        if (showMapView && !LocalInspectionMode.current) {
+            OpenStreetMapSurface(
+                windFarms = uiState.windFarms,
+                selectedWindFarmId = uiState.selectedWindFarm?.windFarm?.id,
+                mapRecenterRequest = uiState.mapRecenterRequest,
+                modifier = Modifier.fillMaxSize(),
+                onMarkerClick = { onEvent(DiscoverUiEvent.WindFarmSelected(it)) },
+            )
+        } else {
+            PreviewMapSurface(modifier = Modifier.fillMaxSize())
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+                            Color.Transparent,
+                            MaterialTheme.colorScheme.surface.copy(alpha = 0.10f),
+                        ),
+                    ),
+                ),
+        )
+
+        DiscoverTopControls(
+            uiState = uiState,
+            onEvent = onEvent,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(
+                    start = FigmaHorizontalStart,
+                    top = FigmaSearchTop,
+                    end = FigmaHorizontalEnd,
+                ),
+        )
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = FigmaLayerTop, end = FigmaHorizontalStart),
+        ) {
+            FloatingMapAction(
+                icon = Icons.Outlined.Layers,
+                contentDescription = "Kartenebenen",
+                onClick = {},
+                containerColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondary,
+                size = 40.dp,
+                shadowElevation = 6.dp,
+            )
+        }
+
+        when {
+            uiState.isLoading -> {
+                LoadingOverlay(modifier = Modifier.align(Alignment.Center))
+            }
+
+            uiState.errorMessage != null -> {
+                ErrorOverlay(
+                    text = uiState.errorMessage,
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(horizontal = 24.dp),
+                )
+            }
+
+            uiState.windFarms.isEmpty() -> {
+                EmptyResultsOverlay(
+                    hasActiveFilters = hasActiveFilters,
+                    onResetFilters = { onEvent(DiscoverUiEvent.ClearFiltersClicked) },
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(horizontal = 24.dp),
+                )
+            }
+        }
+
+        BottomOverlay(
+            uiState = uiState,
+            onWindFarmClick = onWindFarmClick,
+            onClearSelection = { onEvent(DiscoverUiEvent.WindFarmSelectionCleared) },
+            onRecenter = { onEvent(DiscoverUiEvent.RecenterRequested) },
+            onRequestLocationPermission = onRequestLocationPermission,
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
     }
 }
+
+@Composable
+private fun DiscoverTopControls(
+    uiState: DiscoverUiState,
+    onEvent: (DiscoverUiEvent) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(FigmaFilterSpacing),
+    ) {
+        SearchCard(
+            query = uiState.searchQuery,
+            onQueryChange = { onEvent(DiscoverUiEvent.SearchQueryChanged(it)) },
+            onClearQuery = { onEvent(DiscoverUiEvent.SearchQueryChanged("")) },
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            FederalStateDropdown(
+                selectedFederalState = uiState.selectedFederalState,
+                federalStates = uiState.federalStateFilters,
+                onFederalStateSelected = { onEvent(DiscoverUiEvent.FederalStateFilterSelected(it)) },
+            )
+
+            uiState.statusFilters.forEach { status ->
+                val (containerColor, labelColor) = statusChipColors(
+                    status = status,
+                    selected = uiState.selectedStatus == status,
+                )
+                StatusFilterPill(
+                    label = status.label,
+                    selected = uiState.selectedStatus == status,
+                    containerColor = containerColor,
+                    labelColor = labelColor,
+                    onClick = { onEvent(DiscoverUiEvent.StatusFilterSelected(status)) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SearchCard(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onClearQuery: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        modifier = modifier
+            .fillMaxWidth()
+            .height(FigmaSearchHeight),
+        singleLine = true,
+        placeholder = {
+            Text(
+                text = "Ort oder Postleitzahl suchen",
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        },
+        leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+        trailingIcon = if (query.isNotBlank()) {
+            {
+                IconButton(onClick = onClearQuery) {
+                    Icon(Icons.Outlined.Close, contentDescription = "Suche leeren")
+                }
+            }
+        } else {
+            null
+        },
+        shape = RoundedCornerShape(28.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+            focusedBorderColor = Color.Transparent,
+            unfocusedBorderColor = Color.Transparent,
+            focusedLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            unfocusedLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        ),
+    )
+}
+
+@Composable
+private fun FederalStateDropdown(
+    selectedFederalState: String?,
+    federalStates: List<String>,
+    onFederalStateSelected: (String?) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Box(modifier = modifier) {
+        Surface(
+            modifier = Modifier
+                .height(FigmaFilterHeight)
+                .clip(RoundedCornerShape(24.dp))
+                .background(Color.Transparent)
+                .padding(0.dp),
+            shape = RoundedCornerShape(24.dp),
+            color = Color(0xFFF2F5EB),
+            tonalElevation = 2.dp,
+            shadowElevation = 3.dp,
+            onClick = { expanded = true },
+        ) {
+            Row(
+                modifier = Modifier.padding(start = 16.dp, end = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = selectedFederalState ?: "Bundesland",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Icon(
+                    imageVector = Icons.Outlined.ArrowDropDown,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text("Alle Bundeslaender") },
+                onClick = {
+                    expanded = false
+                    onFederalStateSelected(null)
+                },
+            )
+            federalStates.forEach { federalState ->
+                DropdownMenuItem(
+                    text = { Text(federalState) },
+                    onClick = {
+                        expanded = false
+                        onFederalStateSelected(federalState)
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatusFilterPill(
+    label: String,
+    selected: Boolean,
+    containerColor: Color,
+    labelColor: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        modifier = modifier.height(FigmaFilterHeight),
+        shape = RoundedCornerShape(24.dp),
+        leadingIcon = if (selected) {
+            {
+                Icon(
+                    imageVector = Icons.Outlined.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        } else {
+            null
+        },
+        label = {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Medium,
+            )
+        },
+        colors = FilterChipDefaults.filterChipColors(
+            selectedContainerColor = containerColor,
+            selectedLabelColor = labelColor,
+            selectedLeadingIconColor = labelColor,
+            containerColor = inactiveStatusContainerColor(),
+            labelColor = inactiveStatusLabelColor(),
+        ),
+        border = null,
+    )
+}
+
+@Composable
+private fun LoadingOverlay(modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+        tonalElevation = 4.dp,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.5.dp)
+            Column {
+                Text("Windparks werden geladen", style = MaterialTheme.typography.titleSmall)
+                Text(
+                    "Die Karte wird mit aktuellen Filtern aktualisiert.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ErrorOverlay(
+    text: String,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.96f),
+        tonalElevation = 4.dp,
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = "Hinweis",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+            )
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmptyResultsOverlay(
+    hasActiveFilters: Boolean,
+    onResetFilters: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.97f),
+        tonalElevation = 4.dp,
+        shadowElevation = 6.dp,
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Explore,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(28.dp),
+            )
+            Text(
+                text = "Keine Windparks gefunden",
+                style = MaterialTheme.typography.titleMedium,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                text = if (hasActiveFilters) {
+                    "Passe Suche oder Filter an, um wieder Windparks auf der Karte zu sehen."
+                } else {
+                    "Aktuell liegen fuer diese Ansicht keine Windparks vor."
+                },
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            if (hasActiveFilters) {
+                Button(onClick = onResetFilters) {
+                    Text("Filter zuruecksetzen")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BottomOverlay(
+    uiState: DiscoverUiState,
+    onWindFarmClick: (windFarmId: String) -> Unit,
+    onClearSelection: () -> Unit,
+    onRecenter: () -> Unit,
+    onRequestLocationPermission: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val selectedWindFarm = uiState.selectedWindFarm
+    val bottomActionOffset = if (selectedWindFarm == null) 0.dp else (-296).dp
+    var showMarkerHint by remember { mutableStateOf(true) }
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = FigmaHorizontalStart, vertical = 20.dp),
+    ) {
+        if (selectedWindFarm == null && uiState.windFarms.isNotEmpty() && showMarkerHint) {
+            MarkerHintSnackbar(
+                text = "Marker antippen fuer Details",
+                onDismiss = { showMarkerHint = false },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = FigmaSnackbarBottom),
+            )
+        }
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .offset(y = bottomActionOffset),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalAlignment = Alignment.End,
+        ) {
+            FloatingMapAction(
+                icon = Icons.Outlined.MyLocation,
+                contentDescription = "Auf meinen Standort zentrieren",
+                onClick = {
+                    if (uiState.hasLocationPermission) {
+                        onRecenter()
+                    } else {
+                        onRequestLocationPermission()
+                    }
+                },
+                enabled = !uiState.isResolvingCurrentLocation,
+                containerColor = if (uiState.hasLocationPermission) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.secondaryContainer
+                },
+                contentColor = if (uiState.hasLocationPermission) {
+                    MaterialTheme.colorScheme.onPrimary
+                } else {
+                    MaterialTheme.colorScheme.onSecondaryContainer
+                },
+                isLoading = uiState.isResolvingCurrentLocation,
+            )
+        }
+
+        if (selectedWindFarm != null) {
+            SelectedWindFarmSheet(
+                preview = selectedWindFarm,
+                onClose = onClearSelection,
+                onDetailsClick = { onWindFarmClick(selectedWindFarm.windFarm.id) },
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
+        }
+    }
+}
+
+@Composable
+private fun MarkerHintSnackbar(
+    text: String,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.width(260.dp),
+        shape = RoundedCornerShape(4.dp),
+        color = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.98f),
+        tonalElevation = 6.dp,
+        shadowElevation = 8.dp,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp)
+                .padding(start = 16.dp, end = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = text,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.inverseOnSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            IconButton(onClick = onDismiss) {
+                Icon(
+                    imageVector = Icons.Outlined.Close,
+                    contentDescription = "Hinweis schliessen",
+                    tint = MaterialTheme.colorScheme.inverseOnSurface,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FloatingMapAction(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+    containerColor: Color,
+    contentColor: Color,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    isLoading: Boolean = false,
+    size: androidx.compose.ui.unit.Dp = 56.dp,
+    shadowElevation: androidx.compose.ui.unit.Dp = 8.dp,
+) {
+    Surface(
+        modifier = modifier.alpha(if (enabled) 1f else 0.78f),
+        shape = CircleShape,
+        color = containerColor,
+        shadowElevation = shadowElevation,
+        tonalElevation = shadowElevation,
+    ) {
+        IconButton(
+            onClick = onClick,
+            enabled = enabled && !isLoading,
+            modifier = Modifier.size(size),
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.5.dp,
+                    color = contentColor,
+                )
+            } else {
+                Icon(icon, contentDescription = contentDescription, tint = contentColor)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SelectedWindFarmSheet(
+    preview: WindFarmPreview,
+    onClose: () -> Unit,
+    onDetailsClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val windFarm = preview.windFarm
+    val metrics = preview.energyMetrics
+
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
+        tonalElevation = 8.dp,
+        shadowElevation = 12.dp,
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    WindFarmHeroThumbnail()
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(
+                            text = windFarm.name,
+                            style = MaterialTheme.typography.titleLarge,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.LocationOn,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(15.dp),
+                            )
+                            Text(
+                                text = "${windFarm.municipality}, ${windFarm.federalState}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            StatusChip(status = windFarm.status)
+                            Text(
+                                text = "${windFarm.turbineCount} Windraeder",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+
+                IconButton(onClick = onClose, modifier = Modifier.align(Alignment.TopEnd)) {
+                    Icon(Icons.Outlined.Close, contentDescription = "Vorschau schliessen")
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                MetricCapsule(
+                    title = "Nennleistung",
+                    value = "${formatMw(windFarm.totalCapacityKw)} MW",
+                    modifier = Modifier.weight(1f),
+                )
+                MetricCapsule(
+                    title = "Haushalte versorgt",
+                    value = formatInt(metrics.householdsSupplied),
+                    modifier = Modifier.weight(1f),
+                )
+                MetricCapsule(
+                    title = "CO2 gespart/Jahr",
+                    value = "${formatInt(metrics.co2SavingsTonnesPerYear.roundToInt())} t",
+                    modifier = Modifier.weight(1f),
+                )
+            }
+
+            Button(
+                onClick = onDetailsClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                shape = RoundedCornerShape(16.dp),
+            ) {
+                Text("Details ansehen")
+            }
+        }
+    }
+}
+
+@Composable
+private fun WindFarmHeroThumbnail(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .size(width = 92.dp, height = 84.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFFDCECD2),
+                        Color(0xFFC8E0B4),
+                        Color(0xFF8CAD5D),
+                    ),
+                ),
+            ),
+    ) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(22.dp)
+                .background(Color(0xFF7A9E4E)),
+        )
+        Text(
+            text = "|||",
+            modifier = Modifier.align(Alignment.Center),
+            style = MaterialTheme.typography.headlineSmall,
+            color = Color.White.copy(alpha = 0.92f),
+        )
+    }
+}
+
+@Composable
+private fun MetricCapsule(
+    title: String,
+    value: String,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+        tonalElevation = 0.dp,
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+            )
+        }
+    }
+}
+
+@Composable
+private fun OpenStreetMapSurface(
+    windFarms: List<WindFarmPreview>,
+    selectedWindFarmId: String?,
+    mapRecenterRequest: MapRecenterRequest?,
+    onMarkerClick: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+
+    AndroidView(
+        modifier = modifier,
+        factory = { ctx ->
+            Configuration.getInstance().userAgentValue = ctx.packageName
+
+            MapView(ctx).apply {
+                setTileSource(TileSourceFactory.MAPNIK)
+                setMultiTouchControls(true)
+                controller.setZoom(DefaultMapZoom)
+                controller.setCenter(GermanyCenter)
+                minZoomLevel = 4.0
+                maxZoomLevel = 18.0
+                setTilesScaledToDpi(true)
+            }
+        },
+        update = { mapView ->
+            val lastHandledRecenter = mapView.getTag() as? Int ?: 0
+
+            syncMapMarkers(
+                context = context,
+                mapView = mapView,
+                windFarms = windFarms,
+                selectedWindFarmId = selectedWindFarmId,
+                onMarkerClick = onMarkerClick,
+            )
+
+            when {
+                selectedWindFarmId != null -> {
+                    windFarms.firstOrNull { it.windFarm.id == selectedWindFarmId }?.windFarm?.let { windFarm ->
+                        mapView.controller.animateTo(GeoPoint(windFarm.latitude, windFarm.longitude))
+                        mapView.controller.setZoom(DetailMapZoom)
+                    }
+                }
+
+                mapRecenterRequest != null && mapRecenterRequest.requestToken > lastHandledRecenter -> {
+                    mapView.controller.animateTo(GeoPoint(mapRecenterRequest.latitude, mapRecenterRequest.longitude))
+                    mapView.controller.setZoom(mapRecenterRequest.zoom)
+                    mapView.setTag(mapRecenterRequest.requestToken)
+                }
+
+                windFarms.isNotEmpty() && mapView.mapCenter == GermanyCenter -> {
+                    mapView.controller.setCenter(GermanyCenter)
+                }
+            }
+        },
+    )
+}
+
+private fun syncMapMarkers(
+    context: Context,
+    mapView: MapView,
+    windFarms: List<WindFarmPreview>,
+    selectedWindFarmId: String?,
+    onMarkerClick: (String) -> Unit,
+) {
+    mapView.overlays.removeAll { it is Marker }
+
+    windFarms.forEach { preview ->
+        val windFarm = preview.windFarm
+        val marker = Marker(mapView).apply {
+            position = GeoPoint(windFarm.latitude, windFarm.longitude)
+            title = windFarm.name
+            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+            icon = createMarkerBitmapDrawable(
+                context = context,
+                status = windFarm.status,
+                badgeText = windFarm.turbineCount.toString(),
+                selected = windFarm.id == selectedWindFarmId,
+            )
+            setOnMarkerClickListener { _, _ ->
+                onMarkerClick(windFarm.id)
+                true
+            }
+        }
+        mapView.overlays.add(marker)
+    }
+
+    mapView.invalidate()
+}
+
+@Composable
+private fun PreviewMapSurface(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier.background(
+            brush = Brush.linearGradient(
+                colors = listOf(
+                    Color(0xFFD7E9C7),
+                    Color(0xFFC6E0B0),
+                    Color(0xFFE9E7D1),
+                ),
+                start = Offset.Zero,
+                end = Offset(1200f, 1800f),
+            ),
+        ),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(110.dp)
+                .background(Color(0xFFCFE7BF))
+                .align(Alignment.TopCenter),
+        )
+        repeat(6) { index ->
+            Box(
+                modifier = Modifier
+                    .offset(x = (24 + index * 50).dp, y = (220 + (index % 3) * 86).dp)
+                    .size(18.dp)
+                    .clip(CircleShape)
+                    .background(if (index == 0) Color(0xFF2F5C2E) else Color(0xFF4F7D44)),
+            )
+        }
+        Text(
+            text = "OpenStreetMap Preview",
+            modifier = Modifier
+                .align(Alignment.Center)
+                .background(
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                    shape = RoundedCornerShape(16.dp),
+                )
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+    }
+}
+
+private fun createMarkerBitmapDrawable(
+    context: Context,
+    status: WindFarmStatus,
+    badgeText: String,
+    selected: Boolean,
+): android.graphics.drawable.BitmapDrawable {
+    val size = if (selected) 108 else 88
+    val bitmap = createBitmap(size, size)
+    val canvas = Canvas(bitmap)
+    val (fillColor, textColor) = markerColors(status, selected)
+    val outerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = fillColor }
+    val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.WHITE
+        style = Paint.Style.STROKE
+        strokeWidth = if (selected) 6f else 4f
+    }
+    val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = textColor
+        textSize = if (selected) 34f else 28f
+        textAlign = Paint.Align.CENTER
+        typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
+    }
+    val badgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.WHITE
+        alpha = 235
+    }
+    val badgeTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = android.graphics.Color.BLACK
+        textSize = if (selected) 20f else 18f
+        textAlign = Paint.Align.CENTER
+        typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
+    }
+
+    val radius = if (selected) 28f else 24f
+    val centerX = size / 2f
+    val centerY = size / 2f - 8f
+    canvas.drawCircle(centerX, centerY, radius, outerPaint)
+    canvas.drawCircle(centerX, centerY, radius, strokePaint)
+    canvas.drawText("W", centerX, centerY + 10f, textPaint)
+
+    val badgeRect = Rect()
+    badgeTextPaint.getTextBounds(badgeText, 0, badgeText.length, badgeRect)
+    val badgeRadius = if (selected) 14f else 12f
+    val badgeCenterX = centerX + radius * 0.7f
+    val badgeCenterY = centerY - radius * 0.65f
+    canvas.drawCircle(badgeCenterX, badgeCenterY, badgeRadius, badgePaint)
+    canvas.drawText(badgeText, badgeCenterX, badgeCenterY + badgeRect.height() / 2f, badgeTextPaint)
+
+    return android.graphics.drawable.BitmapDrawable(context.resources, bitmap)
+}
+
+private fun markerColors(status: WindFarmStatus, selected: Boolean): Pair<Int, Int> {
+    val base = when (status) {
+        WindFarmStatus.IN_BETRIEB -> Color(0xFF3F6836)
+        WindFarmStatus.IN_WARTUNG -> Color(0xFFF9CD55)
+        WindFarmStatus.IN_PLANUNG -> Color(0xFF53634E)
+        WindFarmStatus.STILLGELEGT -> Color(0xFF8E8E8E)
+    }
+    val fill = if (selected) base else base.copy(alpha = 0.92f)
+    val text = if (status == WindFarmStatus.IN_WARTUNG) android.graphics.Color.BLACK else android.graphics.Color.WHITE
+    return fill.toArgb() to text
+}
+
+private fun statusChipColors(status: WindFarmStatus, selected: Boolean): Pair<Color, Color> {
+    val background = when (status) {
+        WindFarmStatus.IN_BETRIEB -> Color(0xFF3F6836)
+        WindFarmStatus.IN_WARTUNG -> Color(0xFFF9CD55)
+        WindFarmStatus.IN_PLANUNG -> Color(0xFF53634E)
+        WindFarmStatus.STILLGELEGT -> Color(0xFF8E8E8E)
+    }
+    val container = if (selected) background else background.copy(alpha = 0.92f)
+    val content = if (status == WindFarmStatus.IN_WARTUNG) Color(0xFF1E1E1E) else Color.White
+    return container to content
+}
+
+private fun inactiveStatusContainerColor(): Color = Color(0xFFD7E8CD)
+
+private fun inactiveStatusLabelColor(): Color = Color(0xFF3C4B37)
+
+private fun formatMw(totalCapacityKw: Double): String = String.format("%.1f", totalCapacityKw / 1000.0)
+
+private fun formatInt(value: Int): String = "%,d".format(value)
+
+private val WindFarmStatus.label: String
+    get() = when (this) {
+        WindFarmStatus.IN_BETRIEB -> "In Betrieb"
+        WindFarmStatus.IN_WARTUNG -> "In Wartung"
+        WindFarmStatus.IN_PLANUNG -> "In Planung"
+        WindFarmStatus.STILLGELEGT -> "Stillgelegt"
+    }
+
+@Preview(showBackground = true, widthDp = 390, heightDp = 844)
+@Composable
+private fun DiscoverContentPreview() {
+    MaterialTheme {
+        DiscoverContent(
+            uiState = DiscoverUiState(
+                isLoading = false,
+                searchQuery = "Wendischbora",
+                selectedStatus = WindFarmStatus.IN_BETRIEB,
+                selectedFederalState = "Sachsen",
+                windFarms = previewWindFarms,
+                selectedWindFarm = previewWindFarms.first(),
+                federalStateFilters = previewWindFarms.map { it.windFarm.federalState }.distinct(),
+                hasLocationPermission = false,
+            ),
+            onEvent = {},
+            onWindFarmClick = {},
+            onRequestLocationPermission = {},
+            showMapView = false,
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 390, heightDp = 844)
+@Composable
+private fun DiscoverContentEmptyPreview() {
+    MaterialTheme {
+        DiscoverContent(
+            uiState = DiscoverUiState(
+                isLoading = false,
+                searchQuery = "99999",
+                selectedStatus = WindFarmStatus.IN_PLANUNG,
+                selectedFederalState = "Bayern",
+                windFarms = emptyList(),
+                selectedWindFarm = null,
+                hasLocationPermission = true,
+            ),
+            onEvent = {},
+            onWindFarmClick = {},
+            onRequestLocationPermission = {},
+            showMapView = false,
+        )
+    }
+}
+
+private val previewWindFarms = listOf(
+    WindFarmPreview(
+        windFarm = WindFarm(
+            id = "preview-windpark",
+            name = "Windpark Wendischbora",
+            municipality = "Wendischbora",
+            federalState = "Sachsen",
+            latitude = 51.0808,
+            longitude = 13.2792,
+            status = WindFarmStatus.IN_BETRIEB,
+            turbineCount = 6,
+            totalCapacityKw = 29_800.0,
+            commissioningYear = 2019,
+            postalCode = "01683",
+        ),
+        energyMetrics = EnergyMetrics(
+            estimatedCurrentOutputKw = 18_500.0,
+            estimatedAnnualProductionKwh = 92_000_000.0,
+            householdsSupplied = 8_670,
+            co2SavingsTonnesPerYear = 18_200.0,
+            localEnergyContributionPercent = null,
+            municipalRevenueEurPerYear = null,
+        ),
+    ),
+    WindFarmPreview(
+        windFarm = WindFarm(
+            id = "preview-windpark-2",
+            name = "Windpark Taucha",
+            municipality = "Taucha",
+            federalState = "Sachsen",
+            latitude = 51.3862,
+            longitude = 12.4938,
+            status = WindFarmStatus.IN_WARTUNG,
+            turbineCount = 4,
+            totalCapacityKw = 18_200.0,
+            commissioningYear = 2017,
+            postalCode = "04425",
+        ),
+        energyMetrics = EnergyMetrics(
+            estimatedCurrentOutputKw = 11_000.0,
+            estimatedAnnualProductionKwh = 58_000_000.0,
+            householdsSupplied = 5_460,
+            co2SavingsTonnesPerYear = 11_900.0,
+            localEnergyContributionPercent = null,
+            municipalRevenueEurPerYear = null,
+        ),
+    ),
+)

@@ -4,8 +4,10 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
+import com.windnah.core.data.repository.FakeWindFarmRepository
 import com.windnah.core.data.repository.UserPreferencesRepositoryImpl
 import com.windnah.core.domain.repository.UserPreferencesRepository
+import com.windnah.core.domain.repository.WindFarmRepository
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -25,6 +27,12 @@ abstract class DataModule {
     abstract fun bindUserPreferencesRepository(
         impl: UserPreferencesRepositoryImpl,
     ): UserPreferencesRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindWindFarmRepository(
+        impl: FakeWindFarmRepository,
+    ): WindFarmRepository
 
     companion object {
         @Provides
