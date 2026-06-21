@@ -28,7 +28,6 @@ import androidx.compose.material.icons.outlined.ArrowDropDown
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Explore
-import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material.icons.outlined.Search
@@ -93,7 +92,6 @@ private val FigmaHorizontalEnd = 13.dp
 private val FigmaSearchHeight = 56.dp
 private val FigmaFilterSpacing = 13.dp
 private val FigmaFilterHeight = 32.dp
-private val FigmaLayerTop = 190.dp
 private val FigmaSnackbarBottom = 30.dp
 
 @Composable
@@ -199,22 +197,6 @@ private fun DiscoverContent(
                     end = FigmaHorizontalEnd,
                 ),
         )
-
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = FigmaLayerTop, end = FigmaHorizontalStart),
-        ) {
-            FloatingMapAction(
-                icon = Icons.Outlined.Layers,
-                contentDescription = "Kartenebenen",
-                onClick = {},
-                containerColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondary,
-                size = 40.dp,
-                shadowElevation = 6.dp,
-            )
-        }
 
         when {
             uiState.isLoading -> {
@@ -384,7 +366,7 @@ private fun FederalStateDropdown(
 
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             DropdownMenuItem(
-                text = { Text("Alle Bundeslaender") },
+                text = { Text("Alle Bundesländer") },
                 onClick = {
                     expanded = false
                     onFederalStateSelected(null)
@@ -754,7 +736,7 @@ private fun SelectedWindFarmSheet(
                         ) {
                             StatusChip(status = windFarm.status)
                             Text(
-                                text = "${windFarm.turbineCount} Windraeder",
+                                text = "${windFarm.turbineCount} Anlagen",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )

@@ -12,7 +12,6 @@ data class DiscoverUiState(
     val selectedWindFarm: WindFarmPreview? = null,
     val statusFilters: List<WindFarmStatus> = WindFarmStatus.entries,
     val federalStateFilters: List<String> = GermanFederalStates,
-    val isUsingMockData: Boolean = true,
     val errorMessage: String? = null,
     val hasLocationPermission: Boolean = false,
     val isResolvingCurrentLocation: Boolean = false,

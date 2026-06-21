@@ -7,11 +7,11 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FactCheck
+import androidx.compose.material.icons.automirrored.filled.FactCheck
+import androidx.compose.material.icons.automirrored.outlined.FactCheck
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.outlined.FactCheck
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Star
@@ -77,8 +77,8 @@ private val bottomNavItems = listOf(
     BottomNavItem(
         route = ROUTE_FACTS,
         label = "Fakten",
-        selectedIcon = Icons.Filled.FactCheck,
-        unselectedIcon = Icons.Outlined.FactCheck,
+        selectedIcon = Icons.AutoMirrored.Filled.FactCheck,
+        unselectedIcon = Icons.AutoMirrored.Outlined.FactCheck,
     ),
     BottomNavItem(
         route = ROUTE_MY_TURBINES,

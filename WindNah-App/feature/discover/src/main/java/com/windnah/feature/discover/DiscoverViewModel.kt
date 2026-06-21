@@ -9,12 +9,18 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 private const val LOCATION_UNAVAILABLE_MESSAGE = "Standort aktuell nicht verfuegbar."
 private const val WIND_FARMS_UNAVAILABLE_MESSAGE = "Windparks koennen aktuell nicht geladen werden."
+private const val SEARCH_DEBOUNCE_MS = 300L
 
 @HiltViewModel
 class DiscoverViewModel @Inject constructor(
@@ -27,6 +33,13 @@ class DiscoverViewModel @Inject constructor(
     private var loadJob: Job? = null
 
     init {
+        _uiState
+            .map { it.searchQuery }
+            .distinctUntilChanged()
+            .debounce(SEARCH_DEBOUNCE_MS)
+            .onEach { loadWindFarms() }
+            .launchIn(viewModelScope)
+
         loadWindFarms()
     }
 
@@ -34,7 +47,7 @@ class DiscoverViewModel @Inject constructor(
         when (event) {
             is DiscoverUiEvent.SearchQueryChanged -> {
                 _uiState.update { it.copy(searchQuery = event.query) }
-                loadWindFarms()
+                // loadWindFarms() is triggered via the debounced searchQuery flow in init
             }
 
             is DiscoverUiEvent.StatusFilterSelected -> {

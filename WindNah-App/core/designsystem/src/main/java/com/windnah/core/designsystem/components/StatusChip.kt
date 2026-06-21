@@ -15,7 +15,7 @@ fun StatusChip(
     modifier: Modifier = Modifier,
 ) {
     val (label, containerColor, contentColor) = when (status) {
-        WindFarmStatus.IN_BETRIEB -> Triple("In Betrieb", Color(0xFF2E7D32), Color.White)
+        WindFarmStatus.IN_BETRIEB -> Triple("In Betrieb", Color(0xFF3F6836), Color.White)
         WindFarmStatus.IN_WARTUNG -> Triple("In Wartung", Color(0xFFF9CD55), Color.Black)
         WindFarmStatus.IN_PLANUNG -> Triple("In Planung", MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.onSecondary)
         WindFarmStatus.STILLGELEGT -> Triple("Stillgelegt", Color(0xFF9E9E9E), Color.White)

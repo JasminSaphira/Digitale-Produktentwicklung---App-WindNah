@@ -153,20 +153,21 @@ fun OnboardingScreen(
                 }
             }
         } else {
-            // Screen 3: two centered buttons + footer hint (Figma node 120:2139)
+            // Screen 3: buttons + footer hint anchored at bottom (Figma node 120:2139)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 32.dp),
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 40.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 // Primary: request coarse location permission, then complete onboarding
                 Button(
                     onClick = {
                         locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
                     },
-                    modifier = Modifier.fillMaxWidth(0.585f),
+                    modifier = Modifier.fillMaxWidth(),
                     shape = PillShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
@@ -185,7 +186,7 @@ fun OnboardingScreen(
                 // Secondary: skip location, complete onboarding directly
                 Button(
                     onClick = { viewModel.completeOnboarding() },
-                    modifier = Modifier.fillMaxWidth(0.585f),
+                    modifier = Modifier.fillMaxWidth(),
                     shape = PillShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -201,12 +202,12 @@ fun OnboardingScreen(
                     Text("ohne Standort starten")
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = "Aktivieren Sie den Standortzugriff, um sofort\nWindparks in Ihrer Nähe zu finden.",
+                    text = "Aktivieren Sie den Standortzugriff, um sofort Windparks in Ihrer Nähe zu finden.\n\nDie Standortfreigabe ist weiterhin optional und kann jederzeit geändert werden.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                 )
             }
@@ -221,27 +222,27 @@ private fun OnboardingPageContent(page: OnboardingPageData) {
             .fillMaxSize()
             .padding(top = 32.dp),
     ) {
-        // Media image – 330 dp tall, 24 dp rounded corners (Figma node I120:2154;100:3969)
+        // Media image – 260 dp tall on smaller screens, 24 dp rounded corners
         Image(
             painter = painterResource(page.imageRes),
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(330.dp)
+                .height(260.dp)
                 .clip(RoundedCornerShape(24.dp)),
         )
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        // Headline + body (Figma node I120:2154;100:3971)
+        // Headline + body
         Column(
             modifier = Modifier.padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(
                 text = page.headline,
-                style = MaterialTheme.typography.headlineLarge,
+                style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
