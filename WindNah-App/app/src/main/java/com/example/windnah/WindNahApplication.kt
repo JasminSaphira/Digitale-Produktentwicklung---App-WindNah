@@ -10,9 +10,10 @@ class WindNahApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         Configuration.getInstance().apply {
-            userAgentValue = packageName
+            userAgentValue = "$packageName/1.0 (Android; osmdroid)"
             osmdroidBasePath = File(cacheDir, "osmdroid")
             osmdroidTileCache = File(cacheDir, "osmdroid/tiles")
+            isMapViewHardwareAccelerated = true
         }
     }
 }

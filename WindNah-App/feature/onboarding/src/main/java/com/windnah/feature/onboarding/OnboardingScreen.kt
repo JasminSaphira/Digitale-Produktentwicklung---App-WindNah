@@ -167,7 +167,7 @@ fun OnboardingScreen(
                     onClick = {
                         locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
                     },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.width(241.dp),
                     shape = PillShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
@@ -186,7 +186,7 @@ fun OnboardingScreen(
                 // Secondary: skip location, complete onboarding directly
                 Button(
                     onClick = { viewModel.completeOnboarding() },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.width(241.dp),
                     shape = PillShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -205,7 +205,7 @@ fun OnboardingScreen(
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = "Aktivieren Sie den Standortzugriff, um sofort Windparks in Ihrer Nähe zu finden.\n\nDie Standortfreigabe ist weiterhin optional und kann jederzeit geändert werden.",
+                    text = "Aktivieren Sie den Standortzugriff, um sofort Windparks in Ihrer Nähe zu finden. Die Standortfreigabe ist weiterhin optional und kann jederzeit geändert werden.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
@@ -229,20 +229,20 @@ private fun OnboardingPageContent(page: OnboardingPageData) {
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(260.dp)
+                .height(330.dp)
                 .clip(RoundedCornerShape(24.dp)),
         )
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(34.dp))
 
         // Headline + body
         Column(
             modifier = Modifier.padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(36.dp),
         ) {
             Text(
                 text = page.headline,
-                style = MaterialTheme.typography.headlineMedium,
+                style = MaterialTheme.typography.headlineLarge,
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(

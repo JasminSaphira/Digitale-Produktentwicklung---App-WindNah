@@ -25,6 +25,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Air
 import androidx.compose.material.icons.outlined.ArrowDropDown
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
@@ -37,8 +38,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -70,6 +69,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.graphics.createBitmap
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -82,7 +82,7 @@ import org.osmdroid.config.Configuration
 import org.osmdroid.events.MapListener
 import org.osmdroid.events.ScrollEvent
 import org.osmdroid.events.ZoomEvent
-import org.osmdroid.tileprovider.tilesource.TileSourceFactory
+import org.osmdroid.tileprovider.tilesource.XYTileSource
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
@@ -95,6 +95,17 @@ import kotlin.math.sqrt
 private val GermanyCenter = GeoPoint(51.1657, 10.4515)
 private const val DefaultMapZoom = 6.0
 private const val DetailMapZoom = 11.2
+
+private val OsmTileSource = XYTileSource(
+    "OpenStreetMap",
+    0, 19, 256, ".png",
+    arrayOf(
+        "https://a.tile.openstreetmap.org/",
+        "https://b.tile.openstreetmap.org/",
+        "https://c.tile.openstreetmap.org/",
+    ),
+    "© OpenStreetMap contributors",
+)
 private val FigmaSearchTop = 16.dp
 private val FigmaHorizontalStart = 20.dp
 private val FigmaHorizontalEnd = 13.dp
@@ -181,20 +192,6 @@ private fun DiscoverContent(
             PreviewMapSurface(modifier = Modifier.fillMaxSize())
         }
 
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
-                            Color.Transparent,
-                            MaterialTheme.colorScheme.surface.copy(alpha = 0.10f),
-                        ),
-                    ),
-                ),
-        )
-
         DiscoverTopControls(
             uiState = uiState,
             onEvent = onEvent,
@@ -243,7 +240,7 @@ private fun DiscoverContent(
             shadowElevation = 6.dp,
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .padding(top = 130.dp, end = FigmaHorizontalStart),
+                .padding(top = 190.dp, end = FigmaHorizontalStart),
         )
 
         BottomOverlay(
@@ -277,7 +274,7 @@ private fun DiscoverTopControls(
             modifier = Modifier
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             FederalStateDropdown(
                 selectedFederalState = uiState.selectedFederalState,
@@ -358,17 +355,17 @@ private fun FederalStateDropdown(
         Surface(
             modifier = Modifier
                 .height(FigmaFilterHeight)
-                .clip(RoundedCornerShape(24.dp))
+                .clip(RoundedCornerShape(16.dp))
                 .background(Color.Transparent)
                 .padding(0.dp),
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(16.dp),
             color = Color(0xFFF2F5EB),
             tonalElevation = 2.dp,
             shadowElevation = 3.dp,
             onClick = { expanded = true },
         ) {
             Row(
-                modifier = Modifier.padding(start = 16.dp, end = 8.dp),
+                modifier = Modifier.padding(start = 8.dp, end = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
@@ -417,42 +414,34 @@ private fun StatusFilterPill(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    FilterChip(
-        selected = selected,
+    Surface(
         onClick = onClick,
         modifier = modifier.height(FigmaFilterHeight),
-        shape = RoundedCornerShape(24.dp),
-        leadingIcon = if (selected) {
-            {
+        shape = RoundedCornerShape(16.dp),
+        color = containerColor,
+        shadowElevation = 2.dp,
+    ) {
+        Row(
+            modifier = Modifier.padding(start = if (selected) 8.dp else 12.dp, end = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            if (selected) {
                 Icon(
                     imageVector = Icons.Outlined.Check,
                     contentDescription = null,
+                    tint = labelColor,
                     modifier = Modifier.size(16.dp),
                 )
             }
-        } else {
-            null
-        },
-        label = {
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Medium,
+                color = labelColor,
             )
-        },
-        colors = FilterChipDefaults.filterChipColors(
-            selectedContainerColor = containerColor,
-            selectedLabelColor = labelColor,
-            selectedLeadingIconColor = labelColor,
-            containerColor = inactiveStatusContainerColor(),
-            labelColor = inactiveStatusLabelColor(),
-        ),
-        elevation = FilterChipDefaults.filterChipElevation(
-            elevation = 1.dp,
-            pressedElevation = 1.dp,
-        ),
-        border = null,
-    )
+        }
+    }
 }
 
 @Composable
@@ -637,37 +626,21 @@ private fun MarkerHintSnackbar(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Surface(
-        modifier = modifier.width(260.dp),
-        shape = RoundedCornerShape(4.dp),
-        color = MaterialTheme.colorScheme.inverseSurface.copy(alpha = 0.98f),
-        tonalElevation = 6.dp,
-        shadowElevation = 8.dp,
+    Box(
+        modifier = modifier
+            .width(181.dp)
+            .height(32.dp)
+            .background(Color(0xFF53634E), RoundedCornerShape(16.dp))
+            .padding(horizontal = 12.dp),
+        contentAlignment = Alignment.Center,
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp)
-                .padding(start = 16.dp, end = 4.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = text,
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.inverseOnSurface,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            IconButton(onClick = onDismiss) {
-                Icon(
-                    imageVector = Icons.Outlined.Close,
-                    contentDescription = "Hinweis schliessen",
-                    tint = MaterialTheme.colorScheme.inverseOnSurface,
-                )
-            }
-        }
+        Text(
+            text = text,
+            fontSize = 13.sp,
+            color = Color.White,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -721,7 +694,7 @@ private fun SelectedWindFarmSheet(
 
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomStart = 16.dp, bottomEnd = 16.dp),
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
         tonalElevation = 8.dp,
         shadowElevation = 12.dp,
@@ -730,57 +703,84 @@ private fun SelectedWindFarmSheet(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Box(modifier = Modifier.fillMaxWidth()) {
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    WindFarmHeroThumbnail()
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp, bottom = 4.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(width = 40.dp, height = 4.dp)
+                        .background(Color(0xFFC3C8BC), RoundedCornerShape(2.dp)),
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                WindFarmHeroThumbnail()
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.Top,
                     ) {
                         Text(
                             text = windFarm.name,
                             style = MaterialTheme.typography.titleLarge,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f),
                         )
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        IconButton(
+                            onClick = onClose,
+                            modifier = Modifier.size(32.dp),
                         ) {
                             Icon(
-                                imageVector = Icons.Outlined.LocationOn,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(15.dp),
-                            )
-                            Text(
-                                text = "${windFarm.municipality}, ${windFarm.federalState}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            StatusChip(status = windFarm.status)
-                            Text(
-                                text = "${windFarm.turbineCount} Anlagen",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                Icons.Outlined.Close,
+                                contentDescription = "Vorschau schliessen",
+                                modifier = Modifier.size(20.dp),
                             )
                         }
                     }
-                }
-
-                IconButton(onClick = onClose, modifier = Modifier.align(Alignment.TopEnd)) {
-                    Icon(Icons.Outlined.Close, contentDescription = "Vorschau schliessen")
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.LocationOn,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(15.dp),
+                        )
+                        Text(
+                            text = "${windFarm.municipality}, ${windFarm.federalState}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        StatusChip(status = windFarm.status)
+                        Text(
+                            text = "${windFarm.turbineCount} Windräder",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(19.dp),
             ) {
                 MetricCapsule(
                     title = "Nennleistung",
@@ -802,9 +802,8 @@ private fun SelectedWindFarmSheet(
             Button(
                 onClick = onDetailsClick,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                shape = RoundedCornerShape(16.dp),
+                    .fillMaxWidth(),
+                shape = RoundedCornerShape(100.dp),
             ) {
                 Text("Details ansehen")
             }
@@ -816,30 +815,20 @@ private fun SelectedWindFarmSheet(
 private fun WindFarmHeroThumbnail(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
-            .size(width = 92.dp, height = 84.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .size(width = 118.dp, height = 106.dp)
+            .clip(RoundedCornerShape(24.dp))
             .background(
                 brush = Brush.verticalGradient(
-                    colors = listOf(
-                        Color(0xFFDCECD2),
-                        Color(0xFFC8E0B4),
-                        Color(0xFF8CAD5D),
-                    ),
+                    colors = listOf(Color(0xFFB8D4A8), Color(0xFF6B9B50)),
                 ),
             ),
+        contentAlignment = Alignment.Center,
     ) {
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .height(22.dp)
-                .background(Color(0xFF7A9E4E)),
-        )
-        Text(
-            text = "|||",
-            modifier = Modifier.align(Alignment.Center),
-            style = MaterialTheme.typography.headlineSmall,
-            color = Color.White.copy(alpha = 0.92f),
+        Icon(
+            imageVector = Icons.Outlined.Air,
+            contentDescription = null,
+            tint = Color.White.copy(alpha = 0.9f),
+            modifier = Modifier.size(48.dp),
         )
     }
 }
@@ -852,8 +841,8 @@ private fun MetricCapsule(
 ) {
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+        shape = RoundedCornerShape(24.dp),
+        color = Color(0x1AC0EFB0),
         tonalElevation = 0.dp,
     ) {
         Column(
@@ -865,12 +854,16 @@ private fun MetricCapsule(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
             )
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 2,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
             )
         }
     }
@@ -895,10 +888,14 @@ private fun OpenStreetMapSurface(
     AndroidView(
         modifier = modifier,
         factory = { ctx ->
-            Configuration.getInstance().userAgentValue = ctx.packageName
+            Configuration.getInstance().apply {
+                userAgentValue = "${ctx.packageName}/1.0 (Android; osmdroid)"
+                osmdroidBasePath = java.io.File(ctx.cacheDir, "osmdroid")
+                osmdroidTileCache = java.io.File(ctx.cacheDir, "osmdroid/tiles")
+            }
 
             MapView(ctx).apply {
-                setTileSource(TileSourceFactory.MAPNIK)
+                setTileSource(OsmTileSource)
                 setMultiTouchControls(true)
                 controller.setZoom(DefaultMapZoom)
                 controller.setCenter(GermanyCenter)
@@ -991,6 +988,19 @@ private fun clusterWindFarms(
     return clusters
 }
 
+private fun zoomToSeparateCluster(cluster: WindFarmCluster): Double {
+    if (cluster.previews.size <= 1) return DetailMapZoom
+    val lats = cluster.previews.map { it.windFarm.latitude }
+    val lons = cluster.previews.map { it.windFarm.longitude }
+    val spanKm = haversineKm(lats.min(), lons.min(), lats.max(), lons.max())
+    return when {
+        spanKm < 5.0 -> 12.0
+        spanKm < 20.0 -> 10.0
+        spanKm < 60.0 -> 8.0
+        else -> 7.0
+    }
+}
+
 private fun haversineKm(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
     val r = 6371.0
     val dLat = Math.toRadians(lat2 - lat1)
@@ -1039,8 +1049,9 @@ private fun syncMapMarkers(
                 if (isSingle) {
                     onMarkerClick(windFarm.id)
                 } else {
+                    val targetZoom = zoomToSeparateCluster(cluster)
                     mapView.controller.animateTo(GeoPoint(cluster.latitude, cluster.longitude))
-                    mapView.controller.zoomIn()
+                    mapView.controller.setZoom(targetZoom)
                 }
                 true
             }
@@ -1105,9 +1116,9 @@ private fun createMarkerBitmapDrawable(
     isCluster: Boolean = false,
 ): android.graphics.drawable.BitmapDrawable {
     val size = when {
-        isCluster -> 104
-        selected -> 108
-        else -> 88
+        isCluster -> 144
+        selected -> 152
+        else -> 128
     }
     val bitmap = createBitmap(size, size)
     val canvas = Canvas(bitmap)
@@ -1139,7 +1150,7 @@ private fun createMarkerBitmapDrawable(
         val countRect = Rect()
         val countPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = android.graphics.Color.WHITE
-            textSize = 32f
+            textSize = 46f
             textAlign = Paint.Align.CENTER
             typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
         }
@@ -1155,7 +1166,7 @@ private fun createMarkerBitmapDrawable(
         }
         val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = textColor
-            textSize = if (selected) 34f else 28f
+            textSize = if (selected) 48f else 40f
             textAlign = Paint.Align.CENTER
             typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
         }
@@ -1163,15 +1174,15 @@ private fun createMarkerBitmapDrawable(
             color = android.graphics.Color.WHITE
             alpha = 235
         }
-        val badgeTextColor = fillColor  // Badge-Zahl in Markerfarbe (grün/gelb/etc.) wie Figma
+        val badgeTextColor = fillColor
         val badgeTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = badgeTextColor
-            textSize = if (selected) 20f else 18f
+            textSize = if (selected) 28f else 26f
             textAlign = Paint.Align.CENTER
             typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
         }
 
-        val radius = if (selected) 28f else 24f
+        val radius = if (selected) 40f else 34f
         val centerX = size / 2f
         val centerY = size / 2f - 8f
         canvas.drawCircle(centerX, centerY, radius, outerPaint)
@@ -1180,7 +1191,7 @@ private fun createMarkerBitmapDrawable(
 
         val badgeRect = Rect()
         badgeTextPaint.getTextBounds(badgeText, 0, badgeText.length, badgeRect)
-        val badgeRadius = if (selected) 14f else 12f
+        val badgeRadius = if (selected) 20f else 18f
         // Badge oben links wie in Figma
         val badgeCenterX = centerX - radius * 0.7f
         val badgeCenterY = centerY - radius * 0.65f
@@ -1204,15 +1215,14 @@ private fun markerColors(status: WindFarmStatus, selected: Boolean): Pair<Int, I
 }
 
 private fun statusChipColors(status: WindFarmStatus, selected: Boolean): Pair<Color, Color> {
+    if (!selected) return inactiveStatusContainerColor() to inactiveStatusLabelColor()
     val background = when (status) {
         WindFarmStatus.IN_BETRIEB -> Color(0xFF3F6836)
         WindFarmStatus.IN_WARTUNG -> Color(0xFFF9CD55)
-        WindFarmStatus.IN_PLANUNG -> Color(0xFF53634E)
-        WindFarmStatus.STILLGELEGT -> Color(0xFF8E8E8E)
+        WindFarmStatus.IN_PLANUNG -> Color(0xFF3F6836)
+        WindFarmStatus.STILLGELEGT -> Color(0xFF3F6836)
     }
-    val container = if (selected) background else background.copy(alpha = 0.92f)
-    val content = Color.White
-    return container to content
+    return background to Color.White
 }
 
 private fun drawWindTurbineIcon(canvas: Canvas, cx: Float, cy: Float, iconRadius: Float, color: Int) {
@@ -1248,9 +1258,9 @@ private fun drawWindTurbineIcon(canvas: Canvas, cx: Float, cy: Float, iconRadius
     canvas.drawCircle(cx, cy, hubRadius, bladePaint)
 }
 
-private fun inactiveStatusContainerColor(): Color = Color(0xFFD7E8CD)
+private fun inactiveStatusContainerColor(): Color = Color(0xFFF2F5EB)
 
-private fun inactiveStatusLabelColor(): Color = Color(0xFF3C4B37)
+private fun inactiveStatusLabelColor(): Color = Color(0xFF43483F)
 
 private fun formatMw(totalCapacityKw: Double): String = String.format("%.1f", totalCapacityKw / 1000.0)
 

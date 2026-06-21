@@ -2,7 +2,7 @@ package com.windnah.core.network.di
 
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import com.windnah.core.network.dwd.DwdApiService
-import com.windnah.core.network.mastr.MastrApiService
+import com.windnah.core.network.mastr.MastrSoapClient
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -37,13 +37,8 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    @Named("mastr")
-    fun provideMastrRetrofit(client: OkHttpClient): Retrofit =
-        Retrofit.Builder()
-            .baseUrl(MastrApiService.BASE_URL)
-            .client(client)
-            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
-            .build()
+    fun provideMastrSoapClient(client: OkHttpClient): MastrSoapClient =
+        MastrSoapClient(client)
 
     @Provides
     @Singleton
@@ -54,11 +49,6 @@ object NetworkModule {
             .client(client)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
-
-    @Provides
-    @Singleton
-    fun provideMastrApiService(@Named("mastr") retrofit: Retrofit): MastrApiService =
-        retrofit.create(MastrApiService::class.java)
 
     @Provides
     @Singleton

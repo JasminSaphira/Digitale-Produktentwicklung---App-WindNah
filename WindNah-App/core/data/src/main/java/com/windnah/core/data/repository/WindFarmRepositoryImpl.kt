@@ -34,7 +34,8 @@ class WindFarmRepositoryImpl @Inject constructor(
         val previews = cachedPreviews ?: fetchAndCacheWithFallback()
         val allUnits = cachedUnits
 
-        val preview = previews.firstOrNull { it.windFarm.id == windFarmId }
+        val decodedId = runCatching { java.net.URLDecoder.decode(windFarmId, "UTF-8") }.getOrElse { windFarmId }
+val preview = previews.firstOrNull { it.windFarm.id == decodedId }
             ?: run { emit(null); return@flow }
 
         // If we have real MaStR units, find matching turbines
@@ -52,9 +53,9 @@ class WindFarmRepositoryImpl @Inject constructor(
                         .mapNotNull { it.laengengrad }.average()
                         .let { if (it.isNaN()) dto.laengengrad ?: 0.0 else it },
                 )
-                candidateId == windFarmId
+                candidateId == decodedId
             }
-            farmUnits.toWindTurbines(windFarmId)
+            farmUnits.toWindTurbines(decodedId)
         } else {
             // Fallback: generate mock turbines from wind farm aggregate data
             FakeWindFarmRepository.mockTurbinesFor(preview)
@@ -69,7 +70,7 @@ class WindFarmRepositoryImpl @Inject constructor(
 
     private suspend fun fetchAndCacheWithFallback(): List<WindFarmPreview> {
         return runCatching {
-            val units = mastr.getWindUnits(top = 500)
+            val units = mastr.getWindUnits()
             cachedUnits = units
             val previews = units.toWindFarmPreviews()
             cachedPreviews = previews

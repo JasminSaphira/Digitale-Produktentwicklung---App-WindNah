@@ -4,4 +4,5 @@ data class WindFarmDetail(
     val windFarm: WindFarm,
     val energyMetrics: EnergyMetrics,
     val turbines: List<WindTurbine>,
+    val weather: WeatherData? = null,
 )

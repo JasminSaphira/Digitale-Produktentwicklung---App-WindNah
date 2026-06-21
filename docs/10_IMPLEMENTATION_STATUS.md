@@ -1,7 +1,7 @@
 # WindNah – Implementation Status
 
-Version: 1.0
- Last Updated: 2026-06-21
+Version: 1.1
+Last Updated: 2026-06-21
 
 ---
 
@@ -74,8 +74,10 @@ Duration: Days 3–6
 - `OnboardingScreen` — 3-page HorizontalPager, visuell nach Figma (nodes 120:2152 / 120:2149 / 120:2130)
   - Header: WindNah-Logo (40 dp) + App-Name (titleMedium)
   - Media-Bilder pro Seite (330 dp, 24 dp Radius)
-  - Seiten 1 & 2: rechts-ausgerichteter Pill-Button „Weiter"
-  - Seite 3: „Standort freigeben & starten" (ACCESS_COARSE_LOCATION → completeOnboarding) + „ohne Standort starten" (direkt completeOnboarding) + Footer-Hinweis
+  - Headline: `headlineLarge`, Abstand Headline→Body: 36 dp
+  - Abstand Bild→Text: 34 dp
+  - Seiten 1 & 2: rechts-ausgerichteter Pill-Button „Weiter" (Icon 18 dp)
+  - Seite 3: zentrierte Buttons (241 dp breit) — „Standort freigeben & starten" + „ohne Standort starten" (direkt completeOnboarding) + einzeiliger Footer-Hinweis
   - Kein Überspringen-Button, keine Page-Dots (entspricht Figma)
 - `OnboardingViewModel` — speichert Onboarding-Abschluss in DataStore
 - First-launch detection: erste App-Öffnung → Onboarding, danach direkt Entdecken
@@ -83,13 +85,17 @@ Duration: Days 3–6
 - Drawable-Assets: `onboarding_media_1/2/3.png` (aus Figma exportiert)
 
 ### feature:profile
-- `ProfileScreen` — vollständiger Settings-Screen
-  - Sektion **Erscheinungsbild**: Dark Mode Switch → schreibt DataStore via `ProfileViewModel`
-  - Sektion **Konto**: „Anmelden"-Button → öffnet `LoginBottomSheet` (lokal, kein Route)
-  - Sektion **Datenquellen**: MaStR + DWD Info-Texte
-  - Sektion **Über die App**: Version + Impressum-Placeholder
+- `ProfileScreen` — Settings-Screen nach Figma, vollständig überarbeitet (2026-06-21)
+  - TopAppBar mit zweizelligem Titel: „Profil" + Untertitel „Einstellungen & Konto"
+  - Sektion **Darstellung**: Dark Mode Switch + Sprache-Eintrag (Stub)
+  - Sektion **Berechtigungen**: Standort-Toggle + Benachrichtigungen-Toggle (Stubs)
+  - Sektion **Datenansicht anpassen**: Live-Stromproduktion / CO₂-Einsparung / Versorgte Haushalte (Toggles, Stubs)
+  - Sektion **Allgemein**: Datenschutz / Datenquellen / Über diese App / Hilfe & Support / Feedback — je mit Chevron-Icon
+  - Sektion **Konto**: „Anmelden"-Button → öffnet `LoginBottomSheet`
+  - App-Info Card (grüner Hintergrund `#1A3F6836`) mit Versionsinfo
+  - „Abmelden"-Button (OutlinedButton, Error-Farbe)
 - `ProfileViewModel` (`@HiltViewModel`) — liest/schreibt `isDarkModeEnabled` via `UserPreferencesRepository`
-- `LoginBottomSheet` (private Composable in ProfileScreen) — Google (Stub/M5) + E-Mail-Login + „Nicht jetzt"
+- `LoginBottomSheet` (private Composable in ProfileScreen) — Google (Stub) + E-Mail-Login + „Nicht jetzt"
 
 ### feature:auth
 - `LoginScreen` — E-Mail + Passwort + Google-Button (Stub/M5) + Link zu Registrierung
@@ -121,7 +127,10 @@ Duration: Days 5–9
 - Region-, Status- sowie ZIP-/Ortssuche filtern die tatsaechlich angezeigten Windparks ueber ViewModel/UseCase
 - Ein Material-3-Recenter-Button wurde ergaenzt; Standort bleibt optional, wird nicht gespeichert und nur fuer das Zentrieren verwendet
 - **Marker-Clustering**: Zoom-basiertes geografisches Clustering via Haversine-Distanz (nativ in Kotlin, kein bonuspack); Cluster-Marker zeigt Anzahl der Windparks; Tap auf Cluster zoomt hinein
-- **Figma-Polishing**: Layers-FAB (`#3C4B37`, 40dp, oben rechts) wiederhergestellt; Marker-Badge oben links mit Markerfarbe als Textfarbe (analog Figma); Filter-Chip Shadow; „In Wartung"-Textfarbe weiß; Snackbar-Umlaut; SearchBar-Position direkt unter Statusbar
+- **Figma-Polishing**: Layers-FAB (`#3C4B37`, 40dp, top=190dp); Marker-Badge oben links; Filter-Chip Radius 16dp; Chip-Spacing 10dp; Bundesland-Chip Padding korrekt (start=8, end=16dp)
+- **Bottom Sheet** (2026-06-21 überarbeitet): Drag-Handle (40×4dp, `#C3C8BC`), asymmetrischer Radius (top=24dp, bottom=16dp), Thumbnail 118×106dp / Radius 24dp, Pill-Button „Details ansehen", MetricCapsule Radius 24dp / Farbe `#1AC0EFB0`, „Windräder" statt „Anlagen"
+- **MarkerHintSnackbar** (2026-06-21): 181×32dp, Farbe `#53634E`, Radius 16dp, kein Close-Button
+- **Kein Gradient-Overlay** über der Karte (entfernt 2026-06-21)
 - **osmdroid Cache-Initialisierung**: `WindNahApplication.onCreate()` setzt `osmdroidBasePath` und `osmdroidTileCache` auf internen App-Cache → Karte lädt Tiles korrekt
 
 ## Deferred to Later Milestones
@@ -142,17 +151,34 @@ Duration: Days 8–13
 - `FakeWindFarmRepository` extended: 5 Windparks × mock Turbinen (Enercon, Vestas, Siemens Gamesa, Nordex)
 - `WindFarmDetailViewModel` mit `SavedStateHandle` (windFarmId aus NavArgs), Hilt, StateFlow
 - `WindFarmDetailScreen` nach Figma (nodes 61:916 + 75:1338):
-  - Hero-Header 208dp: dunkler Gradient-Overlay, Name + Standort, Zurück-Button, Favorit + Teilen
+  - Hero-Header 208dp: dunkler Gradient-Overlay, Name + Standort, Zurück-Button (padding 8dp), Bookmark + Teilen (40dp, Radius 20dp)
   - `SecondaryTabRow`: Tab „Übersicht" + Tab „Windräder Details"
-  - Übersicht-Tab: StatusChip, Metriken-Karte (MW / Haushalte / CO₂), Größenvergleich-Card mit Balkendiagramm (Windrad 220m, Kölner Dom 157m, Berliner Fernsehturm 368m, Dresdner Frauenkirche 91m)
-  - Windräder-Details-Tab: horizontale `LazyRow` mit scrollbaren Turbinen-Karten (Status, Modell, MW, Rotor, Nabenhöhe, Baujahr, Betreiber)
-- NavGraph: `ROUTE_WIND_FARM_DETAIL` zeigt `WindFarmDetailScreen` (ersetzt Placeholder-Box)
+  - **Übersicht-Tab** (2026-06-21 komplett neu nach Figma):
+    - `OutputCard`: aktueller Output in MW (30sp Bold), Progress-Bar (104dp, grün), Kapazitätsprozent, „X MW max."
+    - `WindstaerkeCard`: Air-Icon, Windgeschwindigkeit (24sp, blaugrün), Windklassifizierung + Ø-Jahresdurchschnitt rechts
+    - `MetricsGrid`: 2×2 Grid — Stromproduktion (GWh), Haushalte, CO₂ (t), Lokaler Anteil (%) — je mit Icon, Wert, Subtext
+    - `KommunaleEinnahmenCard`: Einnahmen in € (24sp Bold), grüner Hintergrund
+  - Windräder-Details-Tab: horizontale `LazyRow` + `GroessenvergleichCard` mit horizontalen Rasterlinien (Canvas, gestrichelt)
+  - TurbineCard: Padding 16dp, Bookmark-Icon statt Herz
+  - `avgHubHeightM` berechnet aus echten MaStR-Turbinendaten
+- NavGraph: `ROUTE_WIND_FARM_DETAIL` zeigt `WindFarmDetailScreen`
+
+## Nachträgliche Verbesserungen (2026-06-21)
+- **OSM-Kartenfix**: `ACCESS_NETWORK_STATE`-Permission + User-Agent + `XYTileSource` statt `MAPNIK`; emulator braucht `-dns-server 8.8.8.8,8.8.4.4`
+- **Filter-Chips**: `FilterChip` durch `Surface`+`Row` ersetzt (Material3 ignoriert `containerColor` bei `selected=false`)
+- **Größere Marker**: 50 % größer (144px Cluster, 152px selected, 128px normal) für 50+ Zielgruppe
+- **Cluster Drill-Down**: Klick auf Cluster-Marker zoomt per `haversineKm`-Bounding-Box rein bis Einzelmarker sichtbar
+- **URL-Encoding Navigation**: `windFarmDetailRoute()` URL-encodiert IDs; Repository decodiert vor Cache-Lookup (behebt Umlaute-Fehler)
+- **Preview-Sheet X-Button**: Fix — Icon nicht mehr überlappend mit Titel
+- **Placeholder-Thumbnail**: Grüner Gradient + Air-Icon im Preview-Sheet
+- **Detail-Screen**: Background `#F8FBF1`, CO₂-Subtext mit Pkw-Vergleich, dynamische Windstärke
 
 ## Offen (Future Milestones)
-- Produktionsverlauf-Chart (M5/M6)
+- Produktionsverlauf-Chart (M6)
 - Lärmschätzung-Simulation (M6)
 - Transparenz-Overlays (M6)
-- Reale Daten via MaStR-API (M5)
+- Carousel (M3 Multi-browse) statt LazyRow für Turbinenkarten (M6)
+- Detail-Screen Figma-Polishing: System-Status-Bar transparent (kein grauer Balken oben)
 
 ---
 
@@ -162,29 +188,36 @@ Duration: Days 9–15
 
 ## Implemented
 
-- **`core:network`** vollständig aufgebaut (Retrofit 2.11, OkHttp 4.12, Kotlinx Serialization 1.8)
-- **MaStR API Client** (`MastrApiService`, `MastrWindUnitDto`, `MastrRemoteDataSource`)
-  - OData REST-API: `https://www.marktstammdatenregister.de/MaStRAPI/wapi/mastr/EinheitWind`
-  - Felder: Name, Gemeinde, Bundesland, Koordinaten, Nennleistung, Rotor, Nabenhöhe, Betriebsstatus, Hersteller, Typ
+- **`core:network`** vollständig aufgebaut (OkHttp 4.12, Retrofit 2.11 für DWD)
+- **MaStR SOAP Client** (`MastrSoapClient`, `MastrWindUnitDto`, `MastrRemoteDataSource`)
+  - SOAP Webdienst (kein REST/OData): `https://www.marktstammdatenregister.de/MaStRApi/Api.svc/Soap11/Anlage`
+  - Zwei-Schritt-Strategie: `GetGefilterteListeStromErzeuger(energietraeger=Wind)` → EinheitMastrNummern → `GetEinheitWind` pro Einheit
+  - Auth: `apiKey` + `marktakteurMastrNummer` = `SOM961179242694` im SOAP-Body (korrekter Namespace)
+  - `XmlPullParser` für XML-Parsing (Android built-in, kein externes Parsing-Framework)
+  - Max. 1 Seite × 100 Detailabfragen parallel (chunks à 20) für schnelle Ladezeiten; Fallback auf Mock-Daten
+  - Felder: Name, Gemeinde, Bundesland, Koordinaten, Nennleistung, Rotordurchmesser, Nabenhöhe, Betriebsstatus, Hersteller, Typ, Inbetriebnahmedatum
+  - `MastrApiService.kt` (REST-Interface) existiert nicht mehr — wurde durch SOAP ersetzt
 - **DWD API Client** via BrightSky (`DwdApiService`, `BrightSkyWeatherDto`, `DwdRemoteDataSource`)
   - BrightSky: `https://api.brightsky.dev/current_weather` (freier DWD-Wrapper)
   - Liefert: Windgeschwindigkeit (m/s), Windrichtung (°), Zeitstempel
-- **`NetworkModule`** (Hilt, `SingletonComponent`) — zwei separate Retrofit-Instanzen (`@Named`)
+- **`NetworkModule`** (Hilt, `SingletonComponent`) — `MastrSoapClient` (OkHttp) + DWD Retrofit
 - **Mapper** (`MastrMapper`, `DwdMapper`)
   - MaStR-Turbinen → Windpark-Aggregation nach `NameWindpark`
   - Windpark-ID-Generierung: `windfarm_{bundesland}_{name}_{lat}_{lon}`
   - Basismetriken aus Stammdaten: Jahresproduktion (∅ 2000 Volllaststunden), Haushalte (÷3500 kWh), CO₂ (UBA-Faktor 354 g/kWh)
-  - Rotordurchmesser = Rotorblattlänge × 2
 - **`WindFarmRepositoryImpl`** — ersetzt `FakeWindFarmRepository` als primäre Impl
-  - Session-Cache für MaStR-Daten (Stammdaten ändern sich selten)
-  - Fallback-kompatibel: `FakeWindFarmRepository` bleibt im Code für Tests
+  - Session-Cache für MaStR-Daten; `runCatching`-Fallback auf Mock-Daten
 - **`WeatherRepository`** Interface (`core:domain`) + `WeatherRepositoryImpl` (`core:data`)
 - **`DataModule`** aktualisiert: bindet `WindFarmRepositoryImpl` + `WeatherRepositoryImpl`
+- **`GetWindFarmDetailUseCase`** erweitert:
+  - Lädt DWD-Wetter parallel per `coroutineScope { async { } }`
+  - Berechnet `estimatedCurrentOutputKw` per Turbine: Hellmann-Exponent (α=0.14), kubische Leistungskurve (Cut-In 3 m/s, Rated 12 m/s), 85% Wake-Efficiency
+  - `WindFarmDetail.weather: WeatherData?` — DWD-Daten fließen in Detail-Screen
+- **`WindFarmDetail`** Modell erweitert: `weather: WeatherData? = null`
 
 ## Offen (Future Milestones)
-- DWD-Windgeschwindigkeit in Echtzeit-Leistungsberechnung einfließen lassen → M6
 - Room-Caching für Offline-Betrieb → M8
-- Paginierung für große MaStR-Abfragen (>500 Anlagen) → M8
+- Paginierung für große MaStR-Abfragen (>2000 Anlagen) → M8
 
 ---
 
@@ -247,8 +280,13 @@ Duration: Days 19–21
 | Issue | Status |
 |-------|--------|
 | Placeholder-Screens: Facts, MyTurbines | Werden in M7 ersetzt |
-| Discover nutzt Mock-Windparkdaten | Real-Datenintegration fuer M5 geplant |
-| Google Sign-In / Firebase Auth nicht integriert | Geplant für M5 — Auth-Screens sind UI-Stubs |
+| Discover lädt echte MaStR-Daten via SOAP | Fallback auf Mock-Daten bei API-Fehler |
+| Google Sign-In / Firebase Auth nicht integriert | Auth-Screens sind UI-Stubs → M7 |
+| Windpark-Thumbnail im Bottom Sheet: Gradient-Placeholder | Echtes Foto fehlt (kein Asset) |
+| Turbinenkarten: LazyRow statt M3-Carousel | Carousel-Peek-Ansicht → M6 |
+| Profil: Benutzerprofil-Karte mit Avatar/Stats fehlt | Erfordert Auth → M7 |
+| Login ist Bottom Sheet statt vollständiger Screen | Vollständiges Login-Formular → M7 |
+| localEnergyContributionPercent + municipalRevenueEurPerYear | Werden in M6 berechnet; derzeit null → UI zeigt „–" |
 
 ---
 

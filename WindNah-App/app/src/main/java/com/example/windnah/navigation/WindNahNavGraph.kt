@@ -3,8 +3,10 @@ package com.example.windnah.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import com.windnah.feature.auth.LoginScreen
 import com.windnah.feature.auth.RegistrationScreen
 import com.windnah.feature.discover.DiscoverScreen
@@ -23,7 +25,8 @@ const val ROUTE_WIND_FARM_DETAIL = "wind_farm_detail/{windFarmId}"
 const val ROUTE_LOGIN = "login"
 const val ROUTE_REGISTER = "register"
 
-fun windFarmDetailRoute(windFarmId: String) = "wind_farm_detail/$windFarmId"
+fun windFarmDetailRoute(windFarmId: String) =
+    "wind_farm_detail/${java.net.URLEncoder.encode(windFarmId, "UTF-8")}"
 
 @Composable
 fun WindNahNavGraph(
@@ -67,7 +70,13 @@ fun WindNahNavGraph(
                 onLoginClick = { navController.navigate(ROUTE_LOGIN) }
             )
         }
-        composable(ROUTE_WIND_FARM_DETAIL) {
+        composable(
+            route = ROUTE_WIND_FARM_DETAIL,
+            arguments = listOf(navArgument("windFarmId") {
+                type = NavType.StringType
+                nullable = false
+            }),
+        ) {
             WindFarmDetailScreen(
                 onNavigateBack = { navController.popBackStack() },
             )
