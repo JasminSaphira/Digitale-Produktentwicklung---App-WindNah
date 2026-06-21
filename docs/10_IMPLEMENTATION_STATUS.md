@@ -1,7 +1,7 @@
 # WindNah – Implementation Status
 
 Version: 1.0
- Last Updated: 2026-06-19
+ Last Updated: 2026-06-21
 
 ---
 
@@ -101,11 +101,11 @@ Alle Screens erreichbar. Navigation Graph komplett.
 
 ---
 
-# Milestone 3 – Wind Farm Discovery ⚙️ IN PROGRESS
+# Milestone 3 – Wind Farm Discovery ✅ DONE
 
 Duration: Days 5–9
 
-## Delivered / In Progress
+## Delivered
 
 - Discover/Entdecken UI visuell an Figma node `138-2193` ausgerichtet, unter Beachtung von Material 3 und dem WindNah Design System
 - Google Maps wurde entfernt
@@ -120,12 +120,12 @@ Duration: Days 5–9
 - Mock-Windparkdaten liegen hinter `WindFarmRepository` / `GetDiscoverWindFarmsUseCase`
 - Region-, Status- sowie ZIP-/Ortssuche filtern die tatsaechlich angezeigten Windparks ueber ViewModel/UseCase
 - Ein Material-3-Recenter-Button wurde ergaenzt; Standort bleibt optional, wird nicht gespeichert und nur fuer das Zentrieren verwendet
+- **Marker-Clustering**: Zoom-basiertes geografisches Clustering via Haversine-Distanz (nativ in Kotlin, kein bonuspack); Cluster-Marker zeigt Anzahl der Windparks; Tap auf Cluster zoomt hinein
 
-## Not Yet Done
+## Deferred to Later Milestones
 
-- Marker-Clustering
-- Real MaStR/DWD API integration
-- Vollstaendige Windpark-Detailseite
+- Real MaStR/DWD API integration → M5
+- Vollstaendige Windpark-Detailseite → M4
 
 ---
 
