@@ -121,6 +121,8 @@ Duration: Days 5–9
 - Region-, Status- sowie ZIP-/Ortssuche filtern die tatsaechlich angezeigten Windparks ueber ViewModel/UseCase
 - Ein Material-3-Recenter-Button wurde ergaenzt; Standort bleibt optional, wird nicht gespeichert und nur fuer das Zentrieren verwendet
 - **Marker-Clustering**: Zoom-basiertes geografisches Clustering via Haversine-Distanz (nativ in Kotlin, kein bonuspack); Cluster-Marker zeigt Anzahl der Windparks; Tap auf Cluster zoomt hinein
+- **Figma-Polishing**: Layers-FAB (`#3C4B37`, 40dp, oben rechts) wiederhergestellt; Marker-Badge oben links mit Markerfarbe als Textfarbe (analog Figma); Filter-Chip Shadow; „In Wartung"-Textfarbe weiß; Snackbar-Umlaut; SearchBar-Position direkt unter Statusbar
+- **osmdroid Cache-Initialisierung**: `WindNahApplication.onCreate()` setzt `osmdroidBasePath` und `osmdroidTileCache` auf internen App-Cache → Karte lädt Tiles korrekt
 
 ## Deferred to Later Milestones
 
@@ -129,31 +131,60 @@ Duration: Days 5–9
 
 ---
 
-# Milestone 4 – Wind Farm Details ⏳ NOT STARTED
+# Milestone 4 – Wind Farm Details ✅ DONE
 
 Duration: Days 8–13
 
-## Planned
+## Implemented
 
-- `WindFarmDetailScreen`
-- Tab: Übersicht (Metriken)
-- Tab: Turbinen-Details
-- Produktionsverlauf (Chart)
-- Lärmschätzung (Simulation)
-- Transparenz-Overlays
+- `WindFarmDetail` domain model (`core:model`)
+- `WindFarmRepository.observeWindFarmDetail()` + `GetWindFarmDetailUseCase` (`core:domain`)
+- `FakeWindFarmRepository` extended: 5 Windparks × mock Turbinen (Enercon, Vestas, Siemens Gamesa, Nordex)
+- `WindFarmDetailViewModel` mit `SavedStateHandle` (windFarmId aus NavArgs), Hilt, StateFlow
+- `WindFarmDetailScreen` nach Figma (nodes 61:916 + 75:1338):
+  - Hero-Header 208dp: dunkler Gradient-Overlay, Name + Standort, Zurück-Button, Favorit + Teilen
+  - `SecondaryTabRow`: Tab „Übersicht" + Tab „Windräder Details"
+  - Übersicht-Tab: StatusChip, Metriken-Karte (MW / Haushalte / CO₂), Größenvergleich-Card mit Balkendiagramm (Windrad 220m, Kölner Dom 157m, Berliner Fernsehturm 368m, Dresdner Frauenkirche 91m)
+  - Windräder-Details-Tab: horizontale `LazyRow` mit scrollbaren Turbinen-Karten (Status, Modell, MW, Rotor, Nabenhöhe, Baujahr, Betreiber)
+- NavGraph: `ROUTE_WIND_FARM_DETAIL` zeigt `WindFarmDetailScreen` (ersetzt Placeholder-Box)
+
+## Offen (Future Milestones)
+- Produktionsverlauf-Chart (M5/M6)
+- Lärmschätzung-Simulation (M6)
+- Transparenz-Overlays (M6)
+- Reale Daten via MaStR-API (M5)
 
 ---
 
-# Milestone 5 – Data Integration ⏳ NOT STARTED
+# Milestone 5 – Data Integration ✅ DONE
 
 Duration: Days 9–15
 
-## Planned
+## Implemented
 
-- MaStR API Client (Windpark-Stammdaten)
-- DWD API Client (Wetterdaten / Windgeschwindigkeit)
-- `core:network` Retrofit-Setup
-- Repository-Implementierungen mit echten API-Daten
+- **`core:network`** vollständig aufgebaut (Retrofit 2.11, OkHttp 4.12, Kotlinx Serialization 1.8)
+- **MaStR API Client** (`MastrApiService`, `MastrWindUnitDto`, `MastrRemoteDataSource`)
+  - OData REST-API: `https://www.marktstammdatenregister.de/MaStRAPI/wapi/mastr/EinheitWind`
+  - Felder: Name, Gemeinde, Bundesland, Koordinaten, Nennleistung, Rotor, Nabenhöhe, Betriebsstatus, Hersteller, Typ
+- **DWD API Client** via BrightSky (`DwdApiService`, `BrightSkyWeatherDto`, `DwdRemoteDataSource`)
+  - BrightSky: `https://api.brightsky.dev/current_weather` (freier DWD-Wrapper)
+  - Liefert: Windgeschwindigkeit (m/s), Windrichtung (°), Zeitstempel
+- **`NetworkModule`** (Hilt, `SingletonComponent`) — zwei separate Retrofit-Instanzen (`@Named`)
+- **Mapper** (`MastrMapper`, `DwdMapper`)
+  - MaStR-Turbinen → Windpark-Aggregation nach `NameWindpark`
+  - Windpark-ID-Generierung: `windfarm_{bundesland}_{name}_{lat}_{lon}`
+  - Basismetriken aus Stammdaten: Jahresproduktion (∅ 2000 Volllaststunden), Haushalte (÷3500 kWh), CO₂ (UBA-Faktor 354 g/kWh)
+  - Rotordurchmesser = Rotorblattlänge × 2
+- **`WindFarmRepositoryImpl`** — ersetzt `FakeWindFarmRepository` als primäre Impl
+  - Session-Cache für MaStR-Daten (Stammdaten ändern sich selten)
+  - Fallback-kompatibel: `FakeWindFarmRepository` bleibt im Code für Tests
+- **`WeatherRepository`** Interface (`core:domain`) + `WeatherRepositoryImpl` (`core:data`)
+- **`DataModule`** aktualisiert: bindet `WindFarmRepositoryImpl` + `WeatherRepositoryImpl`
+
+## Offen (Future Milestones)
+- DWD-Windgeschwindigkeit in Echtzeit-Leistungsberechnung einfließen lassen → M6
+- Room-Caching für Offline-Betrieb → M8
+- Paginierung für große MaStR-Abfragen (>500 Anlagen) → M8
 
 ---
 

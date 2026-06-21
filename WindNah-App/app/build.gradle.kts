@@ -51,6 +51,7 @@ dependencies {
     implementation(project(":feature:auth"))
     implementation(project(":core:domain"))
     implementation(project(":core:data"))
+    implementation(libs.osmdroid.android)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)

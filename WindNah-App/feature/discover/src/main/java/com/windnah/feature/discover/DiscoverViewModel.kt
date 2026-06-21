@@ -133,6 +133,10 @@ class DiscoverViewModel @Inject constructor(
             DiscoverUiEvent.WindFarmSelectionCleared -> {
                 _uiState.update { it.copy(selectedWindFarm = null) }
             }
+
+            DiscoverUiEvent.RetryClicked -> {
+                loadWindFarms()
+            }
         }
     }
 

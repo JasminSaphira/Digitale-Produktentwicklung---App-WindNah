@@ -13,4 +13,5 @@ sealed interface DiscoverUiEvent {
     data object CurrentLocationUnavailable : DiscoverUiEvent
     data object ClearFiltersClicked : DiscoverUiEvent
     data object WindFarmSelectionCleared : DiscoverUiEvent
+    data object RetryClicked : DiscoverUiEvent
 }

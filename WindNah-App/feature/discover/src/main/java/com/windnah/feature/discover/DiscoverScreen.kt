@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -28,6 +29,7 @@ import androidx.compose.material.icons.outlined.ArrowDropDown
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Explore
+import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material.icons.outlined.Search
@@ -93,7 +95,7 @@ import kotlin.math.sqrt
 private val GermanyCenter = GeoPoint(51.1657, 10.4515)
 private const val DefaultMapZoom = 6.0
 private const val DetailMapZoom = 11.2
-private val FigmaSearchTop = 67.dp
+private val FigmaSearchTop = 16.dp
 private val FigmaHorizontalStart = 20.dp
 private val FigmaHorizontalEnd = 13.dp
 private val FigmaSearchHeight = 56.dp
@@ -213,6 +215,7 @@ private fun DiscoverContent(
             uiState.errorMessage != null -> {
                 ErrorOverlay(
                     text = uiState.errorMessage,
+                    onRetry = { onEvent(DiscoverUiEvent.RetryClicked) },
                     modifier = Modifier
                         .align(Alignment.Center)
                         .padding(horizontal = 24.dp),
@@ -229,6 +232,19 @@ private fun DiscoverContent(
                 )
             }
         }
+
+        FloatingMapAction(
+            icon = Icons.Outlined.Layers,
+            contentDescription = "Kartenansicht wechseln",
+            onClick = { /* M4: Kartenebenen */ },
+            containerColor = Color(0xFF3C4B37),
+            contentColor = Color.White,
+            size = 40.dp,
+            shadowElevation = 6.dp,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 130.dp, end = FigmaHorizontalStart),
+        )
 
         BottomOverlay(
             uiState = uiState,
@@ -431,6 +447,10 @@ private fun StatusFilterPill(
             containerColor = inactiveStatusContainerColor(),
             labelColor = inactiveStatusLabelColor(),
         ),
+        elevation = FilterChipDefaults.filterChipElevation(
+            elevation = 1.dp,
+            pressedElevation = 1.dp,
+        ),
         border = null,
     )
 }
@@ -464,6 +484,7 @@ private fun LoadingOverlay(modifier: Modifier = Modifier) {
 @Composable
 private fun ErrorOverlay(
     text: String,
+    onRetry: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -486,6 +507,15 @@ private fun ErrorOverlay(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onErrorContainer,
             )
+            if (onRetry != null) {
+                androidx.compose.material3.TextButton(onClick = onRetry) {
+                    Text(
+                        text = "Erneut versuchen",
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                }
+            }
         }
     }
 }
@@ -558,7 +588,7 @@ private fun BottomOverlay(
     ) {
         if (selectedWindFarm == null && uiState.windFarms.isNotEmpty() && showMarkerHint) {
             MarkerHintSnackbar(
-                text = "Marker antippen fuer Details",
+                text = "Marker antippen für Details",
                 onDismiss = { showMarkerHint = false },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -584,16 +614,8 @@ private fun BottomOverlay(
                     }
                 },
                 enabled = !uiState.isResolvingCurrentLocation,
-                containerColor = if (uiState.hasLocationPermission) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.secondaryContainer
-                },
-                contentColor = if (uiState.hasLocationPermission) {
-                    MaterialTheme.colorScheme.onPrimary
-                } else {
-                    MaterialTheme.colorScheme.onSecondaryContainer
-                },
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                 isLoading = uiState.isResolvingCurrentLocation,
             )
         }
@@ -1141,8 +1163,9 @@ private fun createMarkerBitmapDrawable(
             color = android.graphics.Color.WHITE
             alpha = 235
         }
+        val badgeTextColor = fillColor  // Badge-Zahl in Markerfarbe (grün/gelb/etc.) wie Figma
         val badgeTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = android.graphics.Color.BLACK
+            color = badgeTextColor
             textSize = if (selected) 20f else 18f
             textAlign = Paint.Align.CENTER
             typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
@@ -1153,12 +1176,13 @@ private fun createMarkerBitmapDrawable(
         val centerY = size / 2f - 8f
         canvas.drawCircle(centerX, centerY, radius, outerPaint)
         canvas.drawCircle(centerX, centerY, radius, strokePaint)
-        canvas.drawText("W", centerX, centerY + 10f, textPaint)
+        drawWindTurbineIcon(canvas, centerX, centerY, radius * 0.62f, textColor)
 
         val badgeRect = Rect()
         badgeTextPaint.getTextBounds(badgeText, 0, badgeText.length, badgeRect)
         val badgeRadius = if (selected) 14f else 12f
-        val badgeCenterX = centerX + radius * 0.7f
+        // Badge oben links wie in Figma
+        val badgeCenterX = centerX - radius * 0.7f
         val badgeCenterY = centerY - radius * 0.65f
         canvas.drawCircle(badgeCenterX, badgeCenterY, badgeRadius, badgePaint)
         canvas.drawText(badgeText, badgeCenterX, badgeCenterY + badgeRect.height() / 2f, badgeTextPaint)
@@ -1175,7 +1199,7 @@ private fun markerColors(status: WindFarmStatus, selected: Boolean): Pair<Int, I
         WindFarmStatus.STILLGELEGT -> Color(0xFF8E8E8E)
     }
     val fill = if (selected) base else base.copy(alpha = 0.92f)
-    val text = if (status == WindFarmStatus.IN_WARTUNG) android.graphics.Color.BLACK else android.graphics.Color.WHITE
+    val text = android.graphics.Color.WHITE
     return fill.toArgb() to text
 }
 
@@ -1187,8 +1211,41 @@ private fun statusChipColors(status: WindFarmStatus, selected: Boolean): Pair<Co
         WindFarmStatus.STILLGELEGT -> Color(0xFF8E8E8E)
     }
     val container = if (selected) background else background.copy(alpha = 0.92f)
-    val content = if (status == WindFarmStatus.IN_WARTUNG) Color(0xFF1E1E1E) else Color.White
+    val content = Color.White
     return container to content
+}
+
+private fun drawWindTurbineIcon(canvas: Canvas, cx: Float, cy: Float, iconRadius: Float, color: Int) {
+    val bladePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        this.color = color
+        style = Paint.Style.FILL
+    }
+    val hubRadius = iconRadius * 0.18f
+    val bladeLength = iconRadius * 0.82f
+    val bladeWidth = iconRadius * 0.22f
+
+    // 3 Rotorblätter bei 270°, 30°, 150° (oben + links-unten + rechts-unten)
+    val angles = listOf(270.0, 30.0, 150.0)
+    angles.forEach { angleDeg ->
+        val rad = Math.toRadians(angleDeg)
+        val perpRad = Math.toRadians(angleDeg + 90.0)
+        val tipX = cx + (bladeLength * cos(rad)).toFloat()
+        val tipY = cy + (bladeLength * sin(rad)).toFloat()
+        val p1x = cx + (hubRadius * cos(perpRad)).toFloat()
+        val p1y = cy + (hubRadius * sin(perpRad)).toFloat()
+        val p2x = cx - (hubRadius * cos(perpRad)).toFloat()
+        val p2y = cy - (hubRadius * sin(perpRad)).toFloat()
+        val path = android.graphics.Path().apply {
+            moveTo(p1x, p1y)
+            lineTo(tipX + (bladeWidth * 0.1f * cos(perpRad)).toFloat(), tipY + (bladeWidth * 0.1f * sin(perpRad)).toFloat())
+            lineTo(p2x, p2y)
+            close()
+        }
+        canvas.drawPath(path, bladePaint)
+    }
+
+    // Nabe (Mittelpunkt)
+    canvas.drawCircle(cx, cy, hubRadius, bladePaint)
 }
 
 private fun inactiveStatusContainerColor(): Color = Color(0xFFD7E8CD)

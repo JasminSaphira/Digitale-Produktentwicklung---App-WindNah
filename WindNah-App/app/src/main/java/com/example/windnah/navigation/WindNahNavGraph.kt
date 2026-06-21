@@ -2,10 +2,6 @@ package com.example.windnah.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.material3.Text
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.ui.Alignment
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -16,6 +12,7 @@ import com.windnah.feature.facts.FactsScreen
 import com.windnah.feature.myturbines.MyTurbinesScreen
 import com.windnah.feature.onboarding.OnboardingScreen
 import com.windnah.feature.profile.ProfileScreen
+import com.windnah.feature.windparkdetail.WindFarmDetailScreen
 
 const val ROUTE_ONBOARDING = "onboarding"
 const val ROUTE_DISCOVER = "discover"
@@ -71,12 +68,9 @@ fun WindNahNavGraph(
             )
         }
         composable(ROUTE_WIND_FARM_DETAIL) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("Windpark-Details")
-            }
+            WindFarmDetailScreen(
+                onNavigateBack = { navController.popBackStack() },
+            )
         }
         composable(ROUTE_LOGIN) {
             LoginScreen(

@@ -3,8 +3,10 @@ package com.windnah.core.data.repository
 import com.windnah.core.domain.repository.WindFarmRepository
 import com.windnah.core.model.EnergyMetrics
 import com.windnah.core.model.WindFarm
+import com.windnah.core.model.WindFarmDetail
 import com.windnah.core.model.WindFarmPreview
 import com.windnah.core.model.WindFarmStatus
+import com.windnah.core.model.WindTurbine
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import javax.inject.Inject
@@ -16,7 +18,110 @@ class FakeWindFarmRepository @Inject constructor() : WindFarmRepository {
     override fun observeWindFarmPreviews(): Flow<List<WindFarmPreview>> =
         flowOf(mockWindFarms)
 
+    override fun observeWindFarmDetail(windFarmId: String): Flow<WindFarmDetail?> {
+        val preview = mockWindFarms.firstOrNull { it.windFarm.id == windFarmId }
+            ?: return flowOf(null)
+        val turbines = mockTurbines[windFarmId] ?: emptyList()
+        return flowOf(WindFarmDetail(preview.windFarm, preview.energyMetrics, turbines))
+    }
+
     companion object {
+        fun mockTurbinesFor(preview: WindFarmPreview): List<WindTurbine> {
+            val existing = mockTurbines[preview.windFarm.id]
+            if (existing != null) return existing
+            val count = preview.windFarm.turbineCount.coerceAtLeast(1)
+            val kwPerTurbine = if (count > 0) preview.windFarm.totalCapacityKw / count else 2000.0
+            return (1..count).map { i ->
+                WindTurbine(
+                    id = "${preview.windFarm.id}-t$i",
+                    windFarmId = preview.windFarm.id,
+                    manufacturer = null,
+                    model = null,
+                    ratedPowerKw = kwPerTurbine,
+                    rotorDiameterM = null,
+                    hubHeightM = null,
+                    commissioningYear = preview.windFarm.commissioningYear,
+                    status = preview.windFarm.status,
+                    operator = null,
+                )
+            }
+        }
+
+        val mockPreviews: List<WindFarmPreview> get() = mockWindFarms
+
+        private val mockTurbines: Map<String, List<WindTurbine>> = mapOf(
+            "windpark-uckermark" to (1..14).map { i ->
+                WindTurbine(
+                    id = "uckermark-t$i",
+                    windFarmId = "windpark-uckermark",
+                    manufacturer = "Enercon",
+                    model = "E-126",
+                    ratedPowerKw = 3_000.0,
+                    rotorDiameterM = 127.0,
+                    hubHeightM = 135.0,
+                    commissioningYear = 2019,
+                    status = WindFarmStatus.IN_BETRIEB,
+                    operator = "WindNorth GmbH",
+                )
+            },
+            "windpark-nordfriesland" to (1..9).map { i ->
+                WindTurbine(
+                    id = "nordfriesland-t$i",
+                    windFarmId = "windpark-nordfriesland",
+                    manufacturer = "Vestas",
+                    model = "V150",
+                    ratedPowerKw = 3_500.0,
+                    rotorDiameterM = 150.0,
+                    hubHeightM = 105.0,
+                    commissioningYear = 2017,
+                    status = if (i <= 3) WindFarmStatus.IN_WARTUNG else WindFarmStatus.IN_BETRIEB,
+                    operator = "NordWind AG",
+                )
+            },
+            "windpark-hunsrueck" to (1..11).map { i ->
+                WindTurbine(
+                    id = "hunsrueck-t$i",
+                    windFarmId = "windpark-hunsrueck",
+                    manufacturer = "Siemens Gamesa",
+                    model = "SG 3.4-132",
+                    ratedPowerKw = 3_600.0,
+                    rotorDiameterM = 132.0,
+                    hubHeightM = 110.0,
+                    commissioningYear = 2021,
+                    status = WindFarmStatus.IN_BETRIEB,
+                    operator = "RheinWind GmbH & Co. KG",
+                )
+            },
+            "windpark-altmark" to (1..7).map { i ->
+                WindTurbine(
+                    id = "altmark-t$i",
+                    windFarmId = "windpark-altmark",
+                    manufacturer = "Nordex",
+                    model = "N163/5.X",
+                    ratedPowerKw = 5_000.0,
+                    rotorDiameterM = 163.0,
+                    hubHeightM = 164.0,
+                    commissioningYear = null,
+                    status = WindFarmStatus.IN_PLANUNG,
+                    operator = "AltmarkWind GmbH",
+                )
+            },
+            "windpark-oberbayern" to (1..3).map { i ->
+                WindTurbine(
+                    id = "oberbayern-t$i",
+                    windFarmId = "windpark-oberbayern",
+                    manufacturer = "Enercon",
+                    model = "E-66",
+                    ratedPowerKw = 1_500.0,
+                    rotorDiameterM = 66.0,
+                    hubHeightM = 65.0,
+                    commissioningYear = 2002,
+                    status = WindFarmStatus.STILLGELEGT,
+                    operator = "BayernWind GmbH",
+                )
+            },
+        )
+
         // Mock discovery data until MaStR/DWD-backed repositories are implemented.
         private val mockWindFarms = listOf(
             WindFarmPreview(
