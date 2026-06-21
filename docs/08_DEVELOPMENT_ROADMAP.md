@@ -417,6 +417,7 @@ Real data is integrated.
 ## Definition of Done
 
 Data loads successfully from APIs.
+API Key for that: x7uopppDQpagcZgOHGyWKzjVjR5blJYxZgcjqkXxE5wl6uYFqMv3iYWeTDoceqPa/V21xMzwb4PcxPj+u24JWbWHvN3ycsWBYe/YRvlB/SYaj6Pj79FWkAp0LIZnrdgFi8ITjmBwJ9XKLwjibsuVkeDWjwfs8ntY3qyxN6h64VytW1+AqFk0g9JpGouAyDNP+bin6pvwuYopMrNonygvnBuA+esxDSXRVfCcLLjLAn+9tl0u2O8JITLwZtW+Gw21sOGAt9ScuBWA0t1ituv32WZkHHlpvkzlLoyrulCkxI+j9Vk5fdMCxkDkvl8xvdaJagXCK2HLTvbRYslAeq6xt4aBiCj1kxUbfmP5Y5Mzz/2POGsFIpJ5kdW1BqkdZj+hESauayHT2o/h3vzpmyTJYX/pYcKLVT2GOzRnVPrr/UfCgb5cDR+AwoKCIDjX3RrutDdtNy/aY1cE3fW7ICpcOzvTrjFSOWiUwL+q8SNwKt2VKDmR/p5g+NsfsOwOP3RcF1Ab0CzrNsj1qgn3H0h6kl6WbJE=
 
 ---
 
