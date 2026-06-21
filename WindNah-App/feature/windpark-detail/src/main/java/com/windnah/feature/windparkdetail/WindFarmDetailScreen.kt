@@ -8,12 +8,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
@@ -27,12 +30,11 @@ import androidx.compose.material.icons.outlined.Apartment
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Eco
-import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Share
-import androidx.compose.material.icons.automirrored.outlined.TrendingUp
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -117,38 +119,43 @@ private fun WindFarmDetailContent(
     var selectedTab by remember { mutableIntStateOf(0) }
     val tabs = listOf("Übersicht", "Windräder Details")
 
+    // Edge-to-edge: no Scaffold insets on the header, we handle them manually
     Scaffold(
         containerColor = Color(0xFFF8FBF1),
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
+                .padding(bottom = innerPadding.calculateBottomPadding()),
         ) {
+            // Header extends behind status bar
             WindFarmHeader(
                 windFarm = detail.windFarm,
                 onNavigateBack = onNavigateBack,
             )
 
-            SecondaryTabRow(
-                selectedTabIndex = selectedTab,
-                containerColor = Color(0xFFF8FBF1),
-                contentColor = Color(0xFF3F6836),
-            ) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTab == index,
-                        onClick = { selectedTab = index },
-                        text = {
-                            Text(
-                                text = title,
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
-                            )
-                        },
-                        selectedContentColor = Color(0xFF3F6836),
-                        unselectedContentColor = Color(0xFF43483F),
-                    )
+            // White tab row with divider, exactly like Figma
+            Column {
+                SecondaryTabRow(
+                    selectedTabIndex = selectedTab,
+                    containerColor = Color.White,
+                    contentColor = Color(0xFF3F6836),
+                ) {
+                    tabs.forEachIndexed { index, title ->
+                        Tab(
+                            selected = selectedTab == index,
+                            onClick = { selectedTab = index },
+                            text = {
+                                Text(
+                                    text = title,
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
+                                )
+                            },
+                            selectedContentColor = Color(0xFF3F6836),
+                            unselectedContentColor = Color(0xFF43483F),
+                        )
+                    }
                 }
             }
 
@@ -181,82 +188,91 @@ private fun WindFarmHeader(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(208.dp)
-            .background(Color(0xFF1B4332)),
+            .height(208.dp),
     ) {
+        // Background image
         Image(
             painter = painterResource(R.drawable.windpark_header),
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize(),
         )
-        // Dark gradient overlay for readability
+        // Gradient overlay — subtle at top, darker at bottom for text readability
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(Color(0x33000000), Color(0xBB000000)),
+                        colorStops = arrayOf(
+                            0f to Color(0x22000000),
+                            0.6f to Color(0x44000000),
+                            1f to Color(0xBB000000),
+                        ),
                     ),
                 ),
         )
 
-        // Back button top-left
-        IconButton(
-            onClick = onNavigateBack,
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(start = 8.dp, top = 8.dp)
-                .size(40.dp)
-                .background(Color(0x66191D17), RoundedCornerShape(20.dp)),
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                contentDescription = "Zurück",
-                tint = Color.White,
-            )
-        }
-
-        // Favorite + Share top-right
+        // Top row: back button left, star + share right
+        // windowInsetsPadding ensures buttons clear the status bar
         Row(
             modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(end = 16.dp, top = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                .fillMaxWidth()
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
+            // Back button — 32dp, semi-transparent dark green background
             IconButton(
-                onClick = {},
+                onClick = onNavigateBack,
                 modifier = Modifier
-                    .size(40.dp)
-                    .background(Color(0x66191D17), RoundedCornerShape(20.dp)),
+                    .size(32.dp)
+                    .background(Color(0x66191D17), RoundedCornerShape(16.dp)),
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.BookmarkBorder,
-                    contentDescription = "Favorit",
+                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                    contentDescription = "Zurück",
                     tint = Color.White,
-                    modifier = Modifier.size(20.dp),
+                    modifier = Modifier.size(18.dp),
                 )
             }
-            IconButton(
-                onClick = {},
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(Color(0x66191D17), RoundedCornerShape(20.dp)),
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Share,
-                    contentDescription = "Teilen",
-                    tint = Color.White,
-                    modifier = Modifier.size(20.dp),
-                )
+
+            // Star favorite + Share — both 32dp
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                IconButton(
+                    onClick = {},
+                    modifier = Modifier
+                        .size(32.dp)
+                        .background(Color(0x66191D17), RoundedCornerShape(16.dp)),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.StarBorder,
+                        contentDescription = "Favorit",
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+                IconButton(
+                    onClick = {},
+                    modifier = Modifier
+                        .size(32.dp)
+                        .background(Color(0x66191D17), RoundedCornerShape(16.dp)),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Share,
+                        contentDescription = "Teilen",
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
             }
         }
 
-        // Name and location bottom-left
+        // Name and location at bottom-left of header
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(start = 20.dp, bottom = 16.dp),
+                .padding(start = 20.dp, bottom = 16.dp, end = 80.dp),
         ) {
             Text(
                 text = windFarm.name,
@@ -268,7 +284,7 @@ private fun WindFarmHeader(
             Spacer(modifier = Modifier.height(4.dp))
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Icon(
                     imageVector = Icons.Outlined.LocationOn,
@@ -292,9 +308,10 @@ private fun UebersichtTab(windFarm: WindFarm, metrics: EnergyMetrics, weather: W
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(Color(0xFFF8FBF1))
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         OutputCard(windFarm = windFarm, metrics = metrics)
         WindstaerkeCard(weather = weather)
@@ -319,32 +336,25 @@ private fun OutputCard(windFarm: WindFarm, metrics: EnergyMetrics) {
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(horizontal = 17.dp, vertical = 17.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            // Status chip + info icon
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 StatusChip(status = windFarm.status)
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.TrendingUp,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = Color(0xFF73796E),
-                    )
-                    Text(
-                        text = "Aktuell",
-                        fontSize = 12.sp,
-                        color = Color(0xFF73796E),
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Outlined.Info,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                    tint = Color(0xFF73796E),
+                )
             }
+
+            // MW value + progress bar side by side
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -363,7 +373,10 @@ private fun OutputCard(windFarm: WindFarm, metrics: EnergyMetrics) {
                         color = Color(0xFF73796E),
                     )
                 }
-                Column(horizontalAlignment = Alignment.End) {
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
                     LinearProgressIndicator(
                         progress = { ratio },
                         modifier = Modifier
@@ -391,26 +404,41 @@ private fun WindstaerkeCard(weather: WeatherData?) {
         modifier = Modifier
             .fillMaxWidth()
             .background(Color(0x1A386569), RoundedCornerShape(16.dp))
-            .padding(16.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 12.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Header row: icon + title + info icon
             Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Air,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = Color(0xFF386569),
+                    )
+                    Text(
+                        text = "Aktuelle Windstärke",
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 12.sp,
+                        color = Color(0xFF386569),
+                    )
+                }
                 Icon(
-                    imageVector = Icons.Outlined.Air,
+                    imageVector = Icons.Outlined.Info,
                     contentDescription = null,
-                    modifier = Modifier.size(18.dp),
+                    modifier = Modifier.size(24.dp),
                     tint = Color(0xFF386569),
                 )
-                Text(
-                    text = "Aktuelle Windstärke",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp,
-                    color = Color(0xFF386569),
-                )
             }
+
+            // Wind value left, classification right
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -430,6 +458,7 @@ private fun WindstaerkeCard(weather: WeatherData?) {
                             windClassification(weather.windSpeedMs)
                         else "Keine Winddaten",
                         fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
                         color = Color(0xFF386569),
                     )
                     Text(
@@ -437,6 +466,7 @@ private fun WindstaerkeCard(weather: WeatherData?) {
                             "Ø ${formatDecimal(weather.windSpeedMs, 1)} m/s pro Jahr"
                         else "Ø 5,5 m/s pro Jahr",
                         fontSize = 12.sp,
+                        fontWeight = FontWeight.Light,
                         color = Color(0xFF386569),
                     )
                 }
@@ -447,12 +477,12 @@ private fun WindstaerkeCard(weather: WeatherData?) {
 
 @Composable
 private fun MetricsGrid(metrics: EnergyMetrics) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(21.dp)) {
             MetricCard(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Outlined.Bolt,
-                label = "Stromproduktion\nJahr",
+                label = "Stromproduktion/\nJahr",
                 value = "${formatGwh(metrics.estimatedAnnualProductionKwh)} GWh",
                 subtext = "${formatMwh(metrics.estimatedAnnualProductionKwh)} MWh",
             )
@@ -464,7 +494,7 @@ private fun MetricsGrid(metrics: EnergyMetrics) {
                 subtext = "Haushalte/Jahr",
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(21.dp)) {
             MetricCard(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Outlined.Eco,
@@ -500,28 +530,34 @@ private fun MetricCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(17.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .background(Color(0x29C0EFB0), RoundedCornerShape(14.dp)),
-                contentAlignment = Alignment.Center,
+            // Icon + label row
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = Color(0xFF3F6836),
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .background(Color(0x29C0EFB0), RoundedCornerShape(14.dp)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = Color(0xFF3F6836),
+                    )
+                }
+                Text(
+                    text = label,
+                    fontSize = 12.sp,
+                    color = Color(0xFF73796E),
+                    lineHeight = 16.sp,
                 )
             }
-            Text(
-                text = label,
-                fontSize = 12.sp,
-                color = Color(0xFF73796E),
-                lineHeight = 16.sp,
-            )
             Text(
                 text = value,
                 fontSize = 18.sp,
@@ -532,6 +568,7 @@ private fun MetricCard(
                 text = subtext,
                 fontSize = 11.sp,
                 color = Color(0xFF73796E),
+                lineHeight = 14.sp,
             )
         }
     }
@@ -543,16 +580,18 @@ private fun KommunaleEinnahmenCard(windFarm: WindFarm, metrics: EnergyMetrics) {
         modifier = Modifier
             .fillMaxWidth()
             .background(Color(0x1A3F6836), RoundedCornerShape(16.dp))
-            .padding(16.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
+            // Title row with icon + info
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Apartment,
@@ -570,10 +609,11 @@ private fun KommunaleEinnahmenCard(windFarm: WindFarm, metrics: EnergyMetrics) {
                 Icon(
                     imageVector = Icons.Outlined.Info,
                     contentDescription = null,
-                    modifier = Modifier.size(20.dp),
+                    modifier = Modifier.size(24.dp),
                     tint = Color(0xFF53634E),
                 )
             }
+            Spacer(Modifier.height(10.dp))
             Text(
                 text = metrics.municipalRevenueEurPerYear
                     ?.let { "${formatEur(it.roundToInt())} €" }
@@ -582,27 +622,15 @@ private fun KommunaleEinnahmenCard(windFarm: WindFarm, metrics: EnergyMetrics) {
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF285021),
             )
+            Spacer(Modifier.height(8.dp))
             Text(
                 text = "für die Gemeinde ${windFarm.municipality} · durch Gewerbesteuer und Pachteinnahmen",
                 fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
                 color = Color(0xFF53634E),
+                lineHeight = 16.sp,
             )
         }
-    }
-}
-
-@Composable
-private fun StatusRow(windFarm: WindFarm) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        StatusChip(status = windFarm.status)
-        Text(
-            text = "${windFarm.turbineCount} Windräder",
-            color = Color(0xFF73796E),
-            fontSize = 12.sp,
-        )
     }
 }
 
@@ -665,7 +693,6 @@ private fun GroessenvergleichCard(avgHubHeightM: Double) {
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.Bottom,
             ) {
-                // Y-axis labels (400m top → 0 bottom)
                 Column(
                     modifier = Modifier
                         .width(32.dp)
@@ -678,7 +705,7 @@ private fun GroessenvergleichCard(avgHubHeightM: Double) {
                             text = label,
                             fontSize = 9.sp,
                             color = Color(0xFF3C4B37),
-                            textAlign = androidx.compose.ui.text.style.TextAlign.End,
+                            textAlign = TextAlign.End,
                         )
                     }
                 }
@@ -796,7 +823,6 @@ private fun TurbineCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Header: StatusChip + Name/Model inline, Info icon at end
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -835,7 +861,6 @@ private fun TurbineCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Specs on left, silhouette on right
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
