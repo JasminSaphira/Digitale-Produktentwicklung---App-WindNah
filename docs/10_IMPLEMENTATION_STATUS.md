@@ -237,13 +237,31 @@ Duration: Days 12–17
 
 ---
 
-# Milestone 7 – Facts & Favorites ⏳ NOT STARTED
+# Milestone 7 – Facts & Favorites 🚧 PARTIALLY DONE
 
 Duration: Days 15–18
 
+## Done
+
+### Facts
+
+- `FactsScreen` ersetzt den bisherigen Placeholder und ist visuell an Figma node `311-3632` angelehnt
+- Fakten liegen als lokale Markdown-Dateien unter `core:data/src/main/assets/facts/`
+- Markdown-Struktur nutzt eine Datei pro Kategorie:
+  - `natur-und-umwelt.md`
+  - `mensch-und-gesundheit.md`
+  - `energie-und-technik.md`
+  - `wirtschaft-und-gesellschaft.md`
+- Jede Kategorie-Datei enthaelt mehrere Faktenbloecke mit stabiler ID, Mythos, Titel, Quellen und Erklaerung
+- `FactArticle` und `FactCategory` im `core:model` eingefuehrt
+- `FactRepository` und `GetFactsUseCase` im Domain-Layer eingefuehrt
+- `LocalMarkdownFactRepository` liest Android Assets und parst Frontmatter ohne externe Dependency
+- `FactsViewModel` und `FactsUiState` laden Fakten ueber Repository/UseCase
+- Kategorie-Tabs filtern ueber UI-State; `Alle` zeigt alle lokal abgelegten Fakten
+- `FactCard` zeigt Mythos, Fakt-Erklaerung und Quellenchips
+
 ## Planned
 
-- `FactsScreen` mit Kategorien und Artikeln
 - `FactDetailScreen`
 - `MyTurbinesScreen` mit Favoriten + zuletzt angesehen
 - `FavoriteRepository` (lokal + Firebase Sync)
@@ -279,7 +297,7 @@ Duration: Days 19–21
 
 | Issue | Status |
 |-------|--------|
-| Placeholder-Screens: Facts, MyTurbines | Werden in M7 ersetzt |
+| Placeholder-Screens: MyTurbines | Facts wurde in M7 teilweise ersetzt; Meine Anlagen noch offen |
 | Discover lädt echte MaStR-Daten via SOAP | Fallback auf Mock-Daten bei API-Fehler |
 | Google Sign-In / Firebase Auth nicht integriert | Auth-Screens sind UI-Stubs → M7 |
 | Windpark-Thumbnail im Bottom Sheet: Gradient-Placeholder | Echtes Foto fehlt (kein Asset) |

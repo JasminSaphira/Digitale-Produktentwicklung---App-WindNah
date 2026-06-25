@@ -4,9 +4,11 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
+import com.windnah.core.data.repository.LocalMarkdownFactRepository
 import com.windnah.core.data.repository.UserPreferencesRepositoryImpl
 import com.windnah.core.data.repository.WeatherRepositoryImpl
 import com.windnah.core.data.repository.WindFarmRepositoryImpl
+import com.windnah.core.domain.repository.FactRepository
 import com.windnah.core.domain.repository.UserPreferencesRepository
 import com.windnah.core.domain.repository.WeatherRepository
 import com.windnah.core.domain.repository.WindFarmRepository
@@ -41,6 +43,12 @@ abstract class DataModule {
     abstract fun bindWeatherRepository(
         impl: WeatherRepositoryImpl,
     ): WeatherRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindFactRepository(
+        impl: LocalMarkdownFactRepository,
+    ): FactRepository
 
     companion object {
         @Provides
