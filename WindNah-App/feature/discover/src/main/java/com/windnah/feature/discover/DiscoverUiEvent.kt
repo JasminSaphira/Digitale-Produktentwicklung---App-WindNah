@@ -4,7 +4,7 @@ import com.windnah.core.model.WindFarmStatus
 
 sealed interface DiscoverUiEvent {
     data class SearchQueryChanged(val query: String) : DiscoverUiEvent
-    data class StatusFilterSelected(val status: WindFarmStatus?) : DiscoverUiEvent
+    data class StatusFilterToggled(val status: WindFarmStatus) : DiscoverUiEvent
     data class FederalStateFilterSelected(val federalState: String?) : DiscoverUiEvent
     data class WindFarmSelected(val windFarmId: String) : DiscoverUiEvent
     data class LocationPermissionUpdated(val granted: Boolean) : DiscoverUiEvent

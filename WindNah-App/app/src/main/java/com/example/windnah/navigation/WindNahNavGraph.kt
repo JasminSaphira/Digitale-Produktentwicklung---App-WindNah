@@ -39,6 +39,15 @@ fun WindNahNavGraph(
         startDestination = startDestination,
         modifier = modifier,
     ) {
+        fun navigateToDiscover() {
+            navController.navigate(ROUTE_DISCOVER) {
+                popUpTo(ROUTE_DISCOVER) {
+                    inclusive = false
+                }
+                launchSingleTop = true
+            }
+        }
+
         composable(ROUTE_ONBOARDING) {
             OnboardingScreen(
                 onOnboardingComplete = {
@@ -56,10 +65,13 @@ fun WindNahNavGraph(
             )
         }
         composable(ROUTE_FACTS) {
-            FactsScreen()
+            FactsScreen(
+                onNavigateToMap = { navigateToDiscover() },
+            )
         }
         composable(ROUTE_MY_TURBINES) {
             MyTurbinesScreen(
+                onNavigateToMap = { navigateToDiscover() },
                 onWindFarmClick = { windFarmId ->
                     navController.navigate(windFarmDetailRoute(windFarmId))
                 }
@@ -67,7 +79,8 @@ fun WindNahNavGraph(
         }
         composable(ROUTE_PROFILE) {
             ProfileScreen(
-                onLoginClick = { navController.navigate(ROUTE_LOGIN) }
+                onLoginClick = { navController.navigate(ROUTE_LOGIN) },
+                onNavigateToMap = { navigateToDiscover() },
             )
         }
         composable(

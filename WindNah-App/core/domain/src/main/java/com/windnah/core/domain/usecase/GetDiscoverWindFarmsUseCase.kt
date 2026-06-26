@@ -12,14 +12,14 @@ class GetDiscoverWindFarmsUseCase @Inject constructor(
 ) {
     operator fun invoke(
         searchQuery: String,
-        selectedStatus: WindFarmStatus?,
+        selectedStatuses: Set<WindFarmStatus>,
         selectedFederalState: String?,
     ): Flow<List<WindFarmPreview>> =
         windFarmRepository.observeWindFarmPreviews()
             .map { previews ->
                 previews.filter { preview ->
                     preview.matchesSearch(searchQuery) &&
-                        preview.matchesStatus(selectedStatus) &&
+                        preview.matchesStatuses(selectedStatuses) &&
                         preview.matchesFederalState(selectedFederalState)
                 }
             }
@@ -39,8 +39,8 @@ class GetDiscoverWindFarmsUseCase @Inject constructor(
         }
     }
 
-    private fun WindFarmPreview.matchesStatus(status: WindFarmStatus?): Boolean =
-        status == null || windFarm.status == status
+    private fun WindFarmPreview.matchesStatuses(statuses: Set<WindFarmStatus>): Boolean =
+        statuses.isEmpty() || windFarm.status in statuses
 
     private fun WindFarmPreview.matchesFederalState(federalState: String?): Boolean =
         federalState == null || windFarm.federalState == federalState

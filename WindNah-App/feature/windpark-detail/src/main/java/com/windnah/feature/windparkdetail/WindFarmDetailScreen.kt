@@ -8,15 +8,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
@@ -30,6 +27,7 @@ import androidx.compose.material.icons.outlined.Apartment
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Eco
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LocationOn
@@ -71,6 +69,7 @@ import com.windnah.core.model.WindFarm
 import com.windnah.core.model.WindFarmDetail
 import com.windnah.core.model.WindFarmStatus
 import com.windnah.core.model.WindTurbine
+import com.windnah.core.domain.usecase.WindFarmMetricTransparency
 import com.windnah.feature.windparkdetail.R
 import kotlin.math.roundToInt
 
@@ -86,6 +85,9 @@ fun WindFarmDetailScreen(
         is WindFarmDetailUiState.NotFound -> WindFarmDetailNotFound(onNavigateBack)
         is WindFarmDetailUiState.Success -> WindFarmDetailContent(
             detail = state.detail,
+            metricVisibility = state.metricVisibility,
+            isFavorite = state.isFavorite,
+            onFavoriteClick = viewModel::toggleFavorite,
             onNavigateBack = onNavigateBack,
         )
     }
@@ -114,6 +116,9 @@ private fun WindFarmDetailNotFound(onNavigateBack: () -> Unit) {
 @Composable
 private fun WindFarmDetailContent(
     detail: WindFarmDetail,
+    metricVisibility: MetricVisibilityPreferences,
+    isFavorite: Boolean,
+    onFavoriteClick: () -> Unit,
     onNavigateBack: () -> Unit,
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -131,6 +136,8 @@ private fun WindFarmDetailContent(
             // Header extends behind status bar
             WindFarmHeader(
                 windFarm = detail.windFarm,
+                isFavorite = isFavorite,
+                onFavoriteClick = onFavoriteClick,
                 onNavigateBack = onNavigateBack,
             )
 
@@ -170,6 +177,7 @@ private fun WindFarmDetailContent(
                     windFarm = detail.windFarm,
                     metrics = detail.energyMetrics,
                     weather = detail.weather,
+                    metricVisibility = metricVisibility,
                 )
                 1 -> WindraederDetailsTab(
                     turbines = detail.turbines,
@@ -183,6 +191,8 @@ private fun WindFarmDetailContent(
 @Composable
 private fun WindFarmHeader(
     windFarm: WindFarm,
+    isFavorite: Boolean,
+    onFavoriteClick: () -> Unit,
     onNavigateBack: () -> Unit,
 ) {
     Box(
@@ -212,59 +222,61 @@ private fun WindFarmHeader(
                 ),
         )
 
-        // Top row: back button left, star + share right
-        // windowInsetsPadding ensures buttons clear the status bar
+        IconButton(
+            onClick = onNavigateBack,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(start = 16.dp, top = 16.dp)
+                .size(32.dp)
+                .background(Color(0x66191D17), RoundedCornerShape(16.dp)),
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                contentDescription = "Zurueck",
+                tint = Color.White,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+
         Row(
             modifier = Modifier
-                .fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.statusBars)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+                .align(Alignment.TopEnd)
+                .padding(end = 16.dp, top = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // Back button — 32dp, semi-transparent dark green background
             IconButton(
-                onClick = onNavigateBack,
+                onClick = onFavoriteClick,
+                modifier = Modifier
+                    .size(32.dp)
+                    .background(
+                        color = if (isFavorite) Color(0xCC191D17) else Color(0x66191D17),
+                        shape = RoundedCornerShape(16.dp),
+                    ),
+            ) {
+                Icon(
+                    imageVector = if (isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                    contentDescription = if (isFavorite) {
+                        "Aus Favoriten entfernen"
+                    } else {
+                        "Als Favorit speichern"
+                    },
+                    tint = if (isFavorite) Color(0xFFF9CD55) else Color.White,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+            IconButton(
+                onClick = {},
                 modifier = Modifier
                     .size(32.dp)
                     .background(Color(0x66191D17), RoundedCornerShape(16.dp)),
             ) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = "Zurück",
+                    imageVector = Icons.Outlined.Share,
+                    contentDescription = "Teilen",
                     tint = Color.White,
                     modifier = Modifier.size(18.dp),
                 )
-            }
-
-            // Star favorite + Share — both 32dp
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                IconButton(
-                    onClick = {},
-                    modifier = Modifier
-                        .size(32.dp)
-                        .background(Color(0x66191D17), RoundedCornerShape(16.dp)),
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.StarBorder,
-                        contentDescription = "Favorit",
-                        tint = Color.White,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
-                IconButton(
-                    onClick = {},
-                    modifier = Modifier
-                        .size(32.dp)
-                        .background(Color(0x66191D17), RoundedCornerShape(16.dp)),
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Share,
-                        contentDescription = "Teilen",
-                        tint = Color.White,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
             }
         }
 
@@ -304,7 +316,12 @@ private fun WindFarmHeader(
 }
 
 @Composable
-private fun UebersichtTab(windFarm: WindFarm, metrics: EnergyMetrics, weather: WeatherData?) {
+private fun UebersichtTab(
+    windFarm: WindFarm,
+    metrics: EnergyMetrics,
+    weather: WeatherData?,
+    metricVisibility: MetricVisibilityPreferences,
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -313,21 +330,32 @@ private fun UebersichtTab(windFarm: WindFarm, metrics: EnergyMetrics, weather: W
             .padding(horizontal = 16.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        OutputCard(windFarm = windFarm, metrics = metrics)
+        if (metricVisibility.showLiveOutput) {
+            OutputCard(windFarm = windFarm, metrics = metrics)
+        }
         WindstaerkeCard(weather = weather)
-        MetricsGrid(metrics = metrics)
+        MetricsGrid(
+            metrics = metrics,
+            metricVisibility = metricVisibility,
+        )
         KommunaleEinnahmenCard(windFarm = windFarm, metrics = metrics)
+        NoiseEstimateCard(metrics = metrics)
+        TransparencySummaryCard()
     }
 }
 
 @Composable
 private fun OutputCard(windFarm: WindFarm, metrics: EnergyMetrics) {
-    val ratio = (metrics.estimatedCurrentOutputKw / windFarm.totalCapacityKw)
-        .toFloat()
-        .coerceIn(0f, 1f)
-    val pct = (metrics.estimatedCurrentOutputKw / windFarm.totalCapacityKw * 100)
-        .roundToInt()
-        .coerceIn(0, 100)
+    val ratio = if (windFarm.totalCapacityKw > 0.0) {
+        (metrics.estimatedCurrentOutputKw / windFarm.totalCapacityKw).toFloat().coerceIn(0f, 1f)
+    } else {
+        0f
+    }
+    val pct = if (windFarm.totalCapacityKw > 0.0) {
+        (metrics.estimatedCurrentOutputKw / windFarm.totalCapacityKw * 100).roundToInt().coerceIn(0, 100)
+    } else {
+        0
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -516,6 +544,79 @@ private fun MetricsGrid(metrics: EnergyMetrics) {
 }
 
 @Composable
+private fun MetricsGrid(
+    metrics: EnergyMetrics,
+    metricVisibility: MetricVisibilityPreferences,
+) {
+    val metricCards = buildList {
+        add(
+            MetricCardData(
+                icon = Icons.Outlined.Bolt,
+                label = "Stromproduktion/\nJahr",
+                value = "${formatGwh(metrics.estimatedAnnualProductionKwh)} GWh",
+                subtext = "${formatMwh(metrics.estimatedAnnualProductionKwh)} MWh",
+            ),
+        )
+        if (metricVisibility.showHouseholds) {
+            add(
+                MetricCardData(
+                    icon = Icons.Outlined.Home,
+                    label = "Haushalte\nversorgt",
+                    value = formatNumber(metrics.householdsSupplied),
+                    subtext = "Haushalte/Jahr",
+                ),
+            )
+        }
+        if (metricVisibility.showCo2Savings) {
+            add(
+                MetricCardData(
+                    icon = Icons.Outlined.Eco,
+                    label = "CO2 gespart",
+                    value = "${formatNumber(metrics.co2SavingsTonnesPerYear.roundToInt())} t",
+                    subtext = "ca. ${formatNumber((metrics.co2SavingsTonnesPerYear / 4.7).roundToInt())} Pkw, die ein Jahr lang nicht fahren",
+                ),
+            )
+        }
+        add(
+            MetricCardData(
+                icon = Icons.Outlined.BarChart,
+                label = "Lokaler Anteil",
+                value = metrics.localEnergyContributionPercent
+                    ?.let { "${it.roundToInt()} %" }
+                    ?: "-",
+                subtext = "des kommunalen\nVerbrauchs",
+            ),
+        )
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        metricCards.chunked(2).forEach { rowCards ->
+            Row(horizontalArrangement = Arrangement.spacedBy(21.dp)) {
+                rowCards.forEach { card ->
+                    MetricCard(
+                        modifier = Modifier.weight(1f),
+                        icon = card.icon,
+                        label = card.label,
+                        value = card.value,
+                        subtext = card.subtext,
+                    )
+                }
+                if (rowCards.size == 1) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+private data class MetricCardData(
+    val icon: ImageVector,
+    val label: String,
+    val value: String,
+    val subtext: String,
+)
+
+@Composable
 private fun MetricCard(
     modifier: Modifier = Modifier,
     icon: ImageVector,
@@ -631,6 +732,126 @@ private fun KommunaleEinnahmenCard(windFarm: WindFarm, metrics: EnergyMetrics) {
                 lineHeight = 16.sp,
             )
         }
+    }
+}
+
+@Composable
+private fun NoiseEstimateCard(metrics: EnergyMetrics) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .background(Color(0x29C0EFB0), RoundedCornerShape(14.dp)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Air,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = Color(0xFF3F6836),
+                        )
+                    }
+                    Text(
+                        text = "Larmschatzung",
+                        fontSize = 12.sp,
+                        color = Color(0xFF73796E),
+                    )
+                }
+                Text(
+                    text = metrics.estimatedNoiseLevelDbA?.let { "${it.roundToInt()} dB(A)" } ?: "–",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF191D17),
+                )
+            }
+            Text(
+                text = "Bildungsorientierte Schätzung auf 500 m Referenzdistanz, nicht amtlich gemessen.",
+                fontSize = 11.sp,
+                color = Color(0xFF73796E),
+                lineHeight = 14.sp,
+            )
+            Text(
+                text = WindFarmMetricTransparency.NOISE,
+                fontSize = 10.sp,
+                color = Color(0xFF9AA290),
+                lineHeight = 13.sp,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TransparencySummaryCard() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                text = "Transparenz",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF191D17),
+            )
+            Text(
+                text = "Jede Kennzahl ist ein geschatzter Wert mit klarer Formel und Quelle.",
+                fontSize = 11.sp,
+                color = Color(0xFF73796E),
+                lineHeight = 14.sp,
+            )
+            TransparencyRow("Aktueller Output", WindFarmMetricTransparency.CURRENT_OUTPUT)
+            TransparencyRow("Jahresproduktion", WindFarmMetricTransparency.ANNUAL_PRODUCTION)
+            TransparencyRow("Haushalte", WindFarmMetricTransparency.HOUSEHOLDS_SUPPLIED)
+            TransparencyRow("CO2", WindFarmMetricTransparency.CO2_SAVINGS)
+            TransparencyRow("Lokaler Anteil", WindFarmMetricTransparency.LOCAL_ENERGY)
+            TransparencyRow("Kommunale Einnahmen", WindFarmMetricTransparency.MUNICIPAL_REVENUE)
+            TransparencyRow("Windstarke", WindFarmMetricTransparency.WIND_SPEED)
+            TransparencyRow("Larm", WindFarmMetricTransparency.NOISE)
+        }
+    }
+}
+
+@Composable
+private fun TransparencyRow(
+    title: String,
+    note: String,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(
+            text = title,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xFF3F6836),
+        )
+        Text(
+            text = note,
+            fontSize = 10.sp,
+            color = Color(0xFF73796E),
+            lineHeight = 13.sp,
+        )
     }
 }
 

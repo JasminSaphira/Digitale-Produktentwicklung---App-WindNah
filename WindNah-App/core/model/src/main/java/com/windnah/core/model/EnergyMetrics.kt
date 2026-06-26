@@ -7,4 +7,5 @@ data class EnergyMetrics(
     val co2SavingsTonnesPerYear: Double,
     val localEnergyContributionPercent: Double?,
     val municipalRevenueEurPerYear: Double?,
+    val estimatedNoiseLevelDbA: Double? = null,
 )

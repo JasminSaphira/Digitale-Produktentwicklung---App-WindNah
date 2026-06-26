@@ -1,5 +1,6 @@
 package com.windnah.core.data.mapper
 
+import com.windnah.core.domain.usecase.WindFarmMetricCalculator
 import com.windnah.core.model.EnergyMetrics
 import com.windnah.core.model.WindFarm
 import com.windnah.core.model.WindFarmPreview
@@ -54,28 +55,29 @@ private fun List<MastrWindUnitDto>.toWindFarmPreview(): WindFarmPreview {
     val annualKwh = totalKw * 2_000.0
     val householdsSupplied = (annualKwh / 3_500.0).toInt()
     val co2Savings = annualKwh * (363.0 - 9.0) / 1_000_000.0
+    val windFarm = WindFarm(
+        id = windFarmId,
+        name = firstUnit.windparkName?.trim() ?: "${firstUnit.gemeinde}, ${firstUnit.bundesland}",
+        municipality = firstUnit.gemeinde?.trim() ?: "",
+        federalState = firstUnit.bundesland?.trim() ?: "",
+        latitude = avgLat,
+        longitude = avgLon,
+        status = status,
+        turbineCount = size,
+        totalCapacityKw = totalKw,
+        commissioningYear = commYear,
+        postalCode = firstUnit.postleitzahl,
+    )
 
     return WindFarmPreview(
-        windFarm = WindFarm(
-            id = windFarmId,
-            name = firstUnit.windparkName?.trim() ?: "${firstUnit.gemeinde}, ${firstUnit.bundesland}",
-            municipality = firstUnit.gemeinde?.trim() ?: "",
-            federalState = firstUnit.bundesland?.trim() ?: "",
-            latitude = avgLat,
-            longitude = avgLon,
-            status = status,
-            turbineCount = size,
-            totalCapacityKw = totalKw,
-            commissioningYear = commYear,
-            postalCode = firstUnit.postleitzahl,
-        ),
+        windFarm = windFarm,
         energyMetrics = EnergyMetrics(
             estimatedCurrentOutputKw = 0.0, // filled in by DWD-based calculation
             estimatedAnnualProductionKwh = annualKwh,
             householdsSupplied = householdsSupplied,
             co2SavingsTonnesPerYear = co2Savings,
-            localEnergyContributionPercent = null,
-            municipalRevenueEurPerYear = null,
+            localEnergyContributionPercent = WindFarmMetricCalculator.calculateLocalEnergyContributionPercent(windFarm),
+            municipalRevenueEurPerYear = WindFarmMetricCalculator.calculateMunicipalRevenueEur(annualKwh),
         ),
     )
 }

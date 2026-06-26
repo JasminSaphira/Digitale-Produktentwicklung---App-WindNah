@@ -7,19 +7,22 @@ import android.graphics.Paint
 import android.graphics.Rect
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -32,19 +35,26 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Layers
 import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Terrain
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -74,6 +84,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.graphics.createBitmap
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.windnah.core.designsystem.components.StatusChip
+import com.windnah.core.designsystem.components.StatusFilterChip
 import com.windnah.core.model.EnergyMetrics
 import com.windnah.core.model.WindFarm
 import com.windnah.core.model.WindFarmPreview
@@ -91,10 +102,16 @@ import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
+import androidx.compose.foundation.layout.widthIn
 
 private val GermanyCenter = GeoPoint(51.1657, 10.4515)
 private const val DefaultMapZoom = 6.0
 private const val DetailMapZoom = 11.2
+
+private enum class DiscoverMapLayer(val label: String) {
+    STANDARD("Standardkarte"),
+    TOPOGRAPHIC("Topografisch"),
+}
 
 private val OsmTileSource = XYTileSource(
     "OpenStreetMap",
@@ -106,6 +123,23 @@ private val OsmTileSource = XYTileSource(
     ),
     "© OpenStreetMap contributors",
 )
+private val OpenTopoMapTileSource = XYTileSource(
+    "OpenTopoMap",
+    0, 17, 256, ".png",
+    arrayOf(
+        "https://a.tile.opentopomap.org/",
+        "https://b.tile.opentopomap.org/",
+        "https://c.tile.opentopomap.org/",
+    ),
+    "Map data: Â© OpenStreetMap contributors, SRTM | Map style: Â© OpenTopoMap",
+)
+
+private fun DiscoverMapLayer.tileSource(): XYTileSource = when (this) {
+    DiscoverMapLayer.STANDARD -> OsmTileSource
+    DiscoverMapLayer.TOPOGRAPHIC -> OpenTopoMapTileSource
+}
+
+// TODO: Add satellite/orthophoto layers only when a legal tile provider is available; do not use Google tile URLs directly.
 private val FigmaSearchTop = 16.dp
 private val FigmaHorizontalStart = 20.dp
 private val FigmaHorizontalEnd = 13.dp
@@ -126,6 +160,9 @@ fun DiscoverScreen(
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
     ) { granted ->
+        if (granted) {
+            viewModel.setLocationUsageEnabled(true)
+        }
         viewModel.onEvent(DiscoverUiEvent.LocationPermissionUpdated(granted))
     }
 
@@ -159,6 +196,7 @@ fun DiscoverScreen(
         uiState = uiState,
         onEvent = viewModel::onEvent,
         onWindFarmClick = onWindFarmClick,
+        onEnableLocationUsageAndRecenter = viewModel::enableLocationUsageAndRecenter,
         onRequestLocationPermission = {
             locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
         },
@@ -166,18 +204,23 @@ fun DiscoverScreen(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DiscoverContent(
     uiState: DiscoverUiState,
     onEvent: (DiscoverUiEvent) -> Unit,
     onWindFarmClick: (windFarmId: String) -> Unit,
+    onEnableLocationUsageAndRecenter: () -> Unit,
     onRequestLocationPermission: () -> Unit,
     modifier: Modifier = Modifier,
     showMapView: Boolean = true,
 ) {
     val hasActiveFilters = uiState.searchQuery.isNotBlank() ||
-        uiState.selectedStatus != null ||
+        uiState.selectedStatuses.isNotEmpty() ||
         uiState.selectedFederalState != null
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var selectedMapLayer by remember { mutableStateOf(DiscoverMapLayer.STANDARD) }
+    var showLayerSheet by remember { mutableStateOf(false) }
 
     Box(modifier = modifier.fillMaxSize()) {
         if (showMapView && !LocalInspectionMode.current) {
@@ -185,6 +228,7 @@ private fun DiscoverContent(
                 windFarms = uiState.windFarms,
                 selectedWindFarmId = uiState.selectedWindFarm?.windFarm?.id,
                 mapRecenterRequest = uiState.mapRecenterRequest,
+                selectedMapLayer = selectedMapLayer,
                 modifier = Modifier.fillMaxSize(),
                 onMarkerClick = { onEvent(DiscoverUiEvent.WindFarmSelected(it)) },
             )
@@ -233,7 +277,7 @@ private fun DiscoverContent(
         FloatingMapAction(
             icon = Icons.Outlined.Layers,
             contentDescription = "Kartenansicht wechseln",
-            onClick = { /* M4: Kartenebenen */ },
+            onClick = { showLayerSheet = true },
             containerColor = Color(0xFF3C4B37),
             contentColor = Color.White,
             size = 40.dp,
@@ -245,11 +289,50 @@ private fun DiscoverContent(
 
         BottomOverlay(
             uiState = uiState,
-            onWindFarmClick = onWindFarmClick,
-            onClearSelection = { onEvent(DiscoverUiEvent.WindFarmSelectionCleared) },
             onRecenter = { onEvent(DiscoverUiEvent.RecenterRequested) },
+            onEnableLocationUsageAndRecenter = onEnableLocationUsageAndRecenter,
             onRequestLocationPermission = onRequestLocationPermission,
             modifier = Modifier.align(Alignment.BottomCenter),
+        )
+    }
+
+    if (uiState.selectedWindFarm != null) {
+        ModalBottomSheet(
+            onDismissRequest = { onEvent(DiscoverUiEvent.WindFarmSelectionCleared) },
+            sheetState = sheetState,
+            dragHandle = {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp, bottom = 8.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(width = 40.dp, height = 4.dp)
+                            .background(Color(0xFFC3C8BC), RoundedCornerShape(2.dp)),
+                    )
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface,
+            tonalElevation = 8.dp,
+        ) {
+            SelectedWindFarmSheetContent(
+                preview = uiState.selectedWindFarm,
+                onClose = { onEvent(DiscoverUiEvent.WindFarmSelectionCleared) },
+                onDetailsClick = { onWindFarmClick(uiState.selectedWindFarm.windFarm.id) },
+            )
+        }
+    }
+
+    if (showLayerSheet) {
+        MapLayerBottomSheet(
+            selectedLayer = selectedMapLayer,
+            onLayerSelected = { layer ->
+                selectedMapLayer = layer
+                showLayerSheet = false
+            },
+            onDismiss = { showLayerSheet = false },
         )
     }
 }
@@ -275,6 +358,7 @@ private fun DiscoverTopControls(
                 .fillMaxWidth()
                 .horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             FederalStateDropdown(
                 selectedFederalState = uiState.selectedFederalState,
@@ -283,16 +367,10 @@ private fun DiscoverTopControls(
             )
 
             uiState.statusFilters.forEach { status ->
-                val (containerColor, labelColor) = statusChipColors(
+                StatusFilterChip(
                     status = status,
-                    selected = uiState.selectedStatus == status,
-                )
-                StatusFilterPill(
-                    label = status.label,
-                    selected = uiState.selectedStatus == status,
-                    containerColor = containerColor,
-                    labelColor = labelColor,
-                    onClick = { onEvent(DiscoverUiEvent.StatusFilterSelected(status)) },
+                    selected = status in uiState.selectedStatuses,
+                    onClick = { onEvent(DiscoverUiEvent.StatusFilterToggled(status)) },
                 )
             }
         }
@@ -350,96 +428,135 @@ private fun FederalStateDropdown(
     modifier: Modifier = Modifier,
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val isSelected = selectedFederalState != null
 
     Box(modifier = modifier) {
         Surface(
-            modifier = Modifier
-                .height(FigmaFilterHeight)
-                .clip(RoundedCornerShape(16.dp))
-                .background(Color.Transparent)
-                .padding(0.dp),
-            shape = RoundedCornerShape(16.dp),
-            color = Color(0xFFF2F5EB),
-            tonalElevation = 2.dp,
-            shadowElevation = 3.dp,
             onClick = { expanded = true },
+            shape = RoundedCornerShape(16.dp),
+            color = if (isSelected) {
+                MaterialTheme.colorScheme.secondaryContainer
+            } else {
+                MaterialTheme.colorScheme.surface.copy(alpha = 0.96f)
+            },
+            border = if (isSelected) null else BorderStroke(
+                1.dp,
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f),
+            ),
+            shadowElevation = if (isSelected) 0.dp else 2.dp,
         ) {
             Row(
-                modifier = Modifier.padding(start = 8.dp, end = 16.dp),
+                modifier = Modifier.padding(
+                    start = if (isSelected) 8.dp else 12.dp,
+                    end = 8.dp,
+                    top = 6.dp,
+                    bottom = 6.dp,
+                ),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
+                if (isSelected) {
+                    Icon(
+                        imageVector = Icons.Outlined.Check,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.size(FilterChipDefaults.IconSize),
+                    )
+                }
                 Text(
                     text = selectedFederalState ?: "Bundesland",
                     style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Medium,
+                    color = if (isSelected) {
+                        MaterialTheme.colorScheme.onSecondaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
                 )
                 Icon(
                     imageVector = Icons.Outlined.ArrowDropDown,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = if (isSelected) {
+                        MaterialTheme.colorScheme.onSecondaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    modifier = Modifier.size(18.dp),
                 )
             }
         }
 
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.heightIn(max = 360.dp),
+            shape = RoundedCornerShape(16.dp),
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+        ) {
             DropdownMenuItem(
-                text = { Text("Alle Bundesländer") },
+                text = {
+                    Text(
+                        text = "Alle Bundesländer",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = if (selectedFederalState == null) FontWeight.SemiBold else FontWeight.Normal,
+                        color = if (selectedFederalState == null) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurface
+                        },
+                    )
+                },
+                leadingIcon = if (selectedFederalState == null) {
+                    {
+                        Icon(
+                            imageVector = Icons.Outlined.Check,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                } else null,
                 onClick = {
                     expanded = false
                     onFederalStateSelected(null)
                 },
             )
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                modifier = Modifier.padding(horizontal = 8.dp),
+            )
             federalStates.forEach { federalState ->
+                val isCurrentlySelected = selectedFederalState == federalState
                 DropdownMenuItem(
-                    text = { Text(federalState) },
+                    text = {
+                        Text(
+                            text = federalState,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (isCurrentlySelected) FontWeight.SemiBold else FontWeight.Normal,
+                            color = if (isCurrentlySelected) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            },
+                        )
+                    },
+                    leadingIcon = if (isCurrentlySelected) {
+                        {
+                            Icon(
+                                imageVector = Icons.Outlined.Check,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                    } else null,
                     onClick = {
                         expanded = false
                         onFederalStateSelected(federalState)
                     },
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun StatusFilterPill(
-    label: String,
-    selected: Boolean,
-    containerColor: Color,
-    labelColor: Color,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        onClick = onClick,
-        modifier = modifier.height(FigmaFilterHeight),
-        shape = RoundedCornerShape(16.dp),
-        color = containerColor,
-        shadowElevation = 2.dp,
-    ) {
-        Row(
-            modifier = Modifier.padding(start = if (selected) 8.dp else 12.dp, end = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            if (selected) {
-                Icon(
-                    imageVector = Icons.Outlined.Check,
-                    contentDescription = null,
-                    tint = labelColor,
-                    modifier = Modifier.size(16.dp),
-                )
-            }
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Medium,
-                color = labelColor,
-            )
         }
     }
 }
@@ -560,14 +677,11 @@ private fun EmptyResultsOverlay(
 @Composable
 private fun BottomOverlay(
     uiState: DiscoverUiState,
-    onWindFarmClick: (windFarmId: String) -> Unit,
-    onClearSelection: () -> Unit,
     onRecenter: () -> Unit,
+    onEnableLocationUsageAndRecenter: () -> Unit,
     onRequestLocationPermission: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val selectedWindFarm = uiState.selectedWindFarm
-    val bottomActionOffset = if (selectedWindFarm == null) 0.dp else (-296).dp
     var showMarkerHint by remember { mutableStateOf(true) }
 
     Box(
@@ -575,7 +689,7 @@ private fun BottomOverlay(
             .fillMaxWidth()
             .padding(horizontal = FigmaHorizontalStart, vertical = 20.dp),
     ) {
-        if (selectedWindFarm == null && uiState.windFarms.isNotEmpty() && showMarkerHint) {
+        if (uiState.windFarms.isNotEmpty() && showMarkerHint) {
             MarkerHintSnackbar(
                 text = "Marker antippen für Details",
                 onDismiss = { showMarkerHint = false },
@@ -586,9 +700,7 @@ private fun BottomOverlay(
         }
 
         Column(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .offset(y = bottomActionOffset),
+            modifier = Modifier.align(Alignment.BottomEnd),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalAlignment = Alignment.End,
         ) {
@@ -596,25 +708,18 @@ private fun BottomOverlay(
                 icon = Icons.Outlined.MyLocation,
                 contentDescription = "Auf meinen Standort zentrieren",
                 onClick = {
-                    if (uiState.hasLocationPermission) {
-                        onRecenter()
-                    } else {
+                    if (!uiState.hasLocationPermission) {
                         onRequestLocationPermission()
+                    } else if (!uiState.isLocationUsageEnabled) {
+                        onEnableLocationUsageAndRecenter()
+                    } else {
+                        onRecenter()
                     }
                 },
                 enabled = !uiState.isResolvingCurrentLocation,
                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                 isLoading = uiState.isResolvingCurrentLocation,
-            )
-        }
-
-        if (selectedWindFarm != null) {
-            SelectedWindFarmSheet(
-                preview = selectedWindFarm,
-                onClose = onClearSelection,
-                onDetailsClick = { onWindFarmClick(selectedWindFarm.windFarm.id) },
-                modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
     }
@@ -628,16 +733,19 @@ private fun MarkerHintSnackbar(
 ) {
     Box(
         modifier = modifier
-            .width(181.dp)
+            .widthIn(min = 181.dp, max = 280.dp)
             .height(32.dp)
-            .background(Color(0xFF53634E), RoundedCornerShape(16.dp))
-            .padding(horizontal = 12.dp),
+            .background(
+                color = MaterialTheme.colorScheme.secondary,
+                shape = RoundedCornerShape(16.dp),
+            )
+            .padding(horizontal = 14.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = text,
-            fontSize = 13.sp,
-            color = Color.White,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSecondary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -683,39 +791,22 @@ private fun FloatingMapAction(
 }
 
 @Composable
-private fun SelectedWindFarmSheet(
+private fun SelectedWindFarmSheetContent(
     preview: WindFarmPreview,
     onClose: () -> Unit,
     onDetailsClick: () -> Unit,
-    modifier: Modifier = Modifier,
 ) {
     val windFarm = preview.windFarm
     val metrics = preview.energyMetrics
 
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomStart = 16.dp, bottomEnd = 16.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
-        tonalElevation = 8.dp,
-        shadowElevation = 12.dp,
+    Column(
+        modifier = Modifier
+            .padding(horizontal = 16.dp)
+            .navigationBarsPadding()
+            .padding(bottom = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp, bottom = 4.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(width = 40.dp, height = 4.dp)
-                        .background(Color(0xFFC3C8BC), RoundedCornerShape(2.dp)),
-                )
-            }
-            Row(
+        Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.Top,
@@ -799,14 +890,13 @@ private fun SelectedWindFarmSheet(
                 )
             }
 
-            Button(
-                onClick = onDetailsClick,
-                modifier = Modifier
-                    .fillMaxWidth(),
-                shape = RoundedCornerShape(100.dp),
-            ) {
-                Text("Details ansehen")
-            }
+        Button(
+            onClick = onDetailsClick,
+            modifier = Modifier
+                .fillMaxWidth(),
+            shape = RoundedCornerShape(100.dp),
+        ) {
+            Text("Details ansehen")
         }
     }
 }
@@ -830,6 +920,156 @@ private fun WindFarmHeroThumbnail(modifier: Modifier = Modifier) {
             tint = Color.White.copy(alpha = 0.9f),
             modifier = Modifier.size(48.dp),
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MapLayerBottomSheet(
+    selectedLayer: DiscoverMapLayer,
+    onLayerSelected: (DiscoverMapLayer) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        tonalElevation = 3.dp,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
+        ) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = "Kartentyp",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = "Wähle die passende Kartenansicht für Windparks in deiner Umgebung.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                MapLayerOptionCard(
+                    label = "Standard",
+                    description = "Straßen & Orte",
+                    selected = selectedLayer == DiscoverMapLayer.STANDARD,
+                    icon = Icons.Outlined.Map,
+                    onClick = { onLayerSelected(DiscoverMapLayer.STANDARD) },
+                    modifier = Modifier.weight(1f),
+                )
+
+                MapLayerOptionCard(
+                    label = "Topografisch",
+                    description = "Gelände & Höhen",
+                    selected = selectedLayer == DiscoverMapLayer.TOPOGRAPHIC,
+                    icon = Icons.Outlined.Terrain,
+                    onClick = { onLayerSelected(DiscoverMapLayer.TOPOGRAPHIC) },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MapLayerOptionCard(
+    label: String,
+    description: String,
+    selected: Boolean,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val activeColor = colorScheme.primary
+    val contentColor = if (selected) activeColor else colorScheme.onSurface
+
+    Surface(
+        onClick = onClick,
+        modifier = modifier,
+        shape = RoundedCornerShape(24.dp),
+        color = if (selected) activeColor.copy(alpha = 0.08f) else colorScheme.surface,
+        contentColor = contentColor,
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (selected) activeColor.copy(alpha = 0.45f) else colorScheme.outlineVariant,
+        ),
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = contentColor,
+                modifier = Modifier.size(28.dp),
+            )
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = contentColor,
+                    maxLines = 1,
+                )
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
+
+            if (selected) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Check,
+                        contentDescription = null,
+                        tint = activeColor,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Text(
+                        text = "Aktiv",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = activeColor,
+                    )
+                }
+            } else {
+                Text(
+                    text = "Auswählen",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }
 
@@ -876,6 +1116,7 @@ private fun OpenStreetMapSurface(
     windFarms: List<WindFarmPreview>,
     selectedWindFarmId: String?,
     mapRecenterRequest: MapRecenterRequest?,
+    selectedMapLayer: DiscoverMapLayer,
     onMarkerClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -895,7 +1136,7 @@ private fun OpenStreetMapSurface(
             }
 
             MapView(ctx).apply {
-                setTileSource(OsmTileSource)
+                setTileSource(selectedMapLayer.tileSource())
                 setMultiTouchControls(true)
                 controller.setZoom(DefaultMapZoom)
                 controller.setCenter(GermanyCenter)
@@ -913,6 +1154,7 @@ private fun OpenStreetMapSurface(
         },
         update = { mapView ->
             val lastHandledRecenter = mapView.getTag() as? Int ?: 0
+            mapView.setTileSource(selectedMapLayer.tileSource())
 
             syncMapMarkers(
                 context = context,
@@ -1203,26 +1445,14 @@ private fun createMarkerBitmapDrawable(
 }
 
 private fun markerColors(status: WindFarmStatus, selected: Boolean): Pair<Int, Int> {
-    val base = when (status) {
-        WindFarmStatus.IN_BETRIEB -> Color(0xFF3F6836)
-        WindFarmStatus.IN_WARTUNG -> Color(0xFFF9CD55)
-        WindFarmStatus.IN_PLANUNG -> Color(0xFF53634E)
-        WindFarmStatus.STILLGELEGT -> Color(0xFF8E8E8E)
+    val (fillColor, textColor) = when (status) {
+        WindFarmStatus.IN_BETRIEB -> Color(0xFF4F7650) to Color.White
+        WindFarmStatus.IN_WARTUNG -> Color(0xFFF9CD55) to Color(0xFF2E2A12)
+        WindFarmStatus.IN_PLANUNG -> Color(0xFF386569) to Color.White
+        WindFarmStatus.STILLGELEGT -> Color(0xFF9E9E9E) to Color(0xFF1F1F1F)
     }
-    val fill = if (selected) base else base.copy(alpha = 0.92f)
-    val text = android.graphics.Color.WHITE
-    return fill.toArgb() to text
-}
-
-private fun statusChipColors(status: WindFarmStatus, selected: Boolean): Pair<Color, Color> {
-    if (!selected) return inactiveStatusContainerColor() to inactiveStatusLabelColor()
-    val background = when (status) {
-        WindFarmStatus.IN_BETRIEB -> Color(0xFF3F6836)
-        WindFarmStatus.IN_WARTUNG -> Color(0xFFF9CD55)
-        WindFarmStatus.IN_PLANUNG -> Color(0xFF3F6836)
-        WindFarmStatus.STILLGELEGT -> Color(0xFF3F6836)
-    }
-    return background to Color.White
+    val fill = if (selected) fillColor else fillColor.copy(alpha = 0.92f)
+    return fill.toArgb() to textColor.toArgb()
 }
 
 private fun drawWindTurbineIcon(canvas: Canvas, cx: Float, cy: Float, iconRadius: Float, color: Int) {
@@ -1258,21 +1488,9 @@ private fun drawWindTurbineIcon(canvas: Canvas, cx: Float, cy: Float, iconRadius
     canvas.drawCircle(cx, cy, hubRadius, bladePaint)
 }
 
-private fun inactiveStatusContainerColor(): Color = Color(0xFFF2F5EB)
-
-private fun inactiveStatusLabelColor(): Color = Color(0xFF43483F)
-
 private fun formatMw(totalCapacityKw: Double): String = String.format("%.1f", totalCapacityKw / 1000.0)
 
 private fun formatInt(value: Int): String = "%,d".format(value)
-
-private val WindFarmStatus.label: String
-    get() = when (this) {
-        WindFarmStatus.IN_BETRIEB -> "In Betrieb"
-        WindFarmStatus.IN_WARTUNG -> "In Wartung"
-        WindFarmStatus.IN_PLANUNG -> "In Planung"
-        WindFarmStatus.STILLGELEGT -> "Stillgelegt"
-    }
 
 @Preview(showBackground = true, widthDp = 390, heightDp = 844)
 @Composable
@@ -1282,7 +1500,7 @@ private fun DiscoverContentPreview() {
             uiState = DiscoverUiState(
                 isLoading = false,
                 searchQuery = "Wendischbora",
-                selectedStatus = WindFarmStatus.IN_BETRIEB,
+                selectedStatuses = setOf(WindFarmStatus.IN_BETRIEB, WindFarmStatus.IN_WARTUNG),
                 selectedFederalState = "Sachsen",
                 windFarms = previewWindFarms,
                 selectedWindFarm = previewWindFarms.first(),
@@ -1291,6 +1509,7 @@ private fun DiscoverContentPreview() {
             ),
             onEvent = {},
             onWindFarmClick = {},
+            onEnableLocationUsageAndRecenter = {},
             onRequestLocationPermission = {},
             showMapView = false,
         )
@@ -1305,7 +1524,7 @@ private fun DiscoverContentEmptyPreview() {
             uiState = DiscoverUiState(
                 isLoading = false,
                 searchQuery = "99999",
-                selectedStatus = WindFarmStatus.IN_PLANUNG,
+                selectedStatuses = setOf(WindFarmStatus.IN_PLANUNG),
                 selectedFederalState = "Bayern",
                 windFarms = emptyList(),
                 selectedWindFarm = null,
@@ -1313,6 +1532,7 @@ private fun DiscoverContentEmptyPreview() {
             ),
             onEvent = {},
             onWindFarmClick = {},
+            onEnableLocationUsageAndRecenter = {},
             onRequestLocationPermission = {},
             showMapView = false,
         )

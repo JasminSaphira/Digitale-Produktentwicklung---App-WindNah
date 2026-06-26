@@ -97,6 +97,12 @@ Duration: Days 3–6
 - `ProfileViewModel` (`@HiltViewModel`) — liest/schreibt `isDarkModeEnabled` via `UserPreferencesRepository`
 - `LoginBottomSheet` (private Composable in ProfileScreen) — Google (Stub) + E-Mail-Login + „Nicht jetzt"
 
+Profil-Update 2026-06-26:
+- Profil-Redesign nach Figma node `680:7549`: Profilkarte mit Avatar/Stats, prominente App-Info-Karte, Kontakt-Section, Datenschutz-Hinweis und kartenbasierte Settings-Listen
+- Standort-Switch steuert die WindNah-interne Standortnutzung und fragt bei Aktivierung `ACCESS_COARSE_LOCATION` an
+- Metrik-Switches steuern die Sichtbarkeit von Live-Stromproduktion, CO2-Einsparung und versorgten Haushalten im Windpark-Detail-Screen
+- `ProfileViewModel` liest/schreibt Dark Mode, Standortnutzung und Metrik-Sichtbarkeit via `UserPreferencesRepository`
+
 ### feature:auth
 - `LoginScreen` — E-Mail + Passwort + Google-Button (Stub/M5) + Link zu Registrierung
 - `RegistrationScreen` — Name + E-Mail + Passwort
@@ -221,11 +227,13 @@ Duration: Days 9–15
 
 ---
 
-# Milestone 6 – Calculations ⏳ NOT STARTED
+# Milestone 6 - Transparency & Calculations DONE
 
 Duration: Days 12–17
 
-## Planned
+Status Update 2026-06-26: Implemented / DONE
+
+## Implemented
 
 - `CalculateCurrentOutputUseCase`
 - `CalculateHouseholdsSuppliedUseCase`
@@ -234,10 +242,27 @@ Duration: Days 12–17
 - `CalculateLocalEnergyContributionUseCase`
 - `CalculateNoiseEstimateUseCase`
 - `CalculateAnnualProductionUseCase`
+- Zentrale Berechnungslogik in `WindFarmMetricCalculator` (`core:domain`) eingefuehrt
+- `EnergyMetrics` um `estimatedNoiseLevelDbA` erweitert
+- `GetWindFarmDetailUseCase` rechnet Detail-Kennzahlen jetzt konsistent aus:
+  - aktueller Output auf Basis von DWD/BrightSky-Winddaten, Hubhoehe, Nennleistung und Turbinenstatus
+  - Jahresproduktion per Volllaststunden-Modell
+  - versorgte Haushalte, CO2-Einsparung, lokaler Energiebeitrag und kommunale Einnahmen
+  - bildungsorientierte Laermschaetzung in dB(A)
+- MaStR-Mapping und Mock-Daten liefern keine `null`-Platzhalter mehr fuer `localEnergyContributionPercent` und `municipalRevenueEurPerYear`
+- Detail-Screen zeigt neue Laermschaetzungs-Karte und kompakte Transparenz-Zusammenfassung fuer die Kennzahlen
+- Transparenztexte liegen in `WindFarmMetricTransparency` und benennen Formelannahmen, Datenquellen und Aktualisierungsrhythmus
+
+## Verification
+
+- `:core:domain:test` erfolgreich
+- `:core:data:test` erfolgreich
+- `:feature:windpark-detail:compileDebugKotlin` erfolgreich
+- Voller `./gradlew test` wird aktuell noch durch bestehende fehlerhafte Onboarding-PNGs blockiert (`onboarding_media_1/2/3.png`: keine gueltige PNG-Signatur)
 
 ---
 
-# Milestone 7 – Facts & Favorites 🚧 PARTIALLY DONE
+# Milestone 7 – Facts, Favorites & Meine Anlagen ✅ DONE
 
 Duration: Days 15–18
 
@@ -260,11 +285,34 @@ Duration: Days 15–18
 - Kategorie-Tabs filtern ueber UI-State; `Alle` zeigt alle lokal abgelegten Fakten
 - `FactCard` zeigt Mythos, Fakt-Erklaerung und Quellenchips
 
+### Favorites
+
+- Lokale Favoriten-Persistenz via Room im `core:database`-Modul eingefuehrt
+- `FavoriteRepository` im Domain-Layer und lokale Implementierung im Data-Layer eingefuehrt
+- Windpark-Detail-Stern speichert und entfernt Favoriten persistent ohne Login-Zwang
+- `MyTurbinesViewModel` liest gespeicherte Favoriten als Vorbereitung fuer die vollstaendige Meine-Anlagen-Liste
+
+### Meine Anlagen (2026-06-26)
+
+- `RecentlyViewedRepository` im Domain-Layer mit `observeRecentlyViewedIds(limit)` und `recordViewed(windFarmId)`
+- `RecentlyViewedEntity` und `RecentlyViewedDao` im `core:database`-Modul
+- Room-Datenbank auf Version 2 erhöht; Migration `1 → 2` legt Tabelle `recently_viewed_wind_farms` an
+- `RecentlyViewedRepositoryImpl` im Data-Layer; trimmt die Liste nach jedem `recordViewed` auf maximal 10 Einträge
+- Hilt-Binding und DAO-Provider in `DataModule` ergänzt
+- `WindFarmDetailViewModel` ruft einmalig pro Detailöffnung `recordViewed(windFarmId)` im `init`-Block auf
+- `MyTurbinesViewModel` kombiniert `favoriteIds`, `recentlyViewedIds` und `observeWindFarmPreviews()` zu `MyTurbinesUiState`
+- `MyTurbinesScreen` nach Figma node `306:3226`:
+  - Abschnitt **Gespeichert** mit Stern-Icon, Count-Badge und `FavoriteWindFarmCard` (Status, Name, Ort, CO₂/Haushalte/Leistung)
+  - Stern in Favoritenkarte entfernt den Favoriten per `removeFavorite()`
+  - Abschnitt **Zuletzt angesehen** als Liste mit bis zu 10 echten Windparks
+  - Empty States: „Noch keine Favoriten gespeichert." / „Noch keine Windparks angesehen."
+  - CTA „Neue Windraeder entdecken" ruft `onNavigateToMap()` auf
+  - Keine Dummy-Daten; alle Werte kommen aus echten Repository-Daten
+
 ## Planned
 
 - `FactDetailScreen`
-- `MyTurbinesScreen` mit Favoriten + zuletzt angesehen
-- `FavoriteRepository` (lokal + Firebase Sync)
+- Firebase Sync und Auth-Gating fuer Favoriten
 
 ---
 
@@ -297,7 +345,7 @@ Duration: Days 19–21
 
 | Issue | Status |
 |-------|--------|
-| Placeholder-Screens: MyTurbines | Facts wurde in M7 teilweise ersetzt; Meine Anlagen noch offen |
+| Placeholder-Screens: MyTurbines | ✅ Umgesetzt in M7 (Favoriten + Zuletzt angesehen) |
 | Discover lädt echte MaStR-Daten via SOAP | Fallback auf Mock-Daten bei API-Fehler |
 | Google Sign-In / Firebase Auth nicht integriert | Auth-Screens sind UI-Stubs → M7 |
 | Windpark-Thumbnail im Bottom Sheet: Gradient-Placeholder | Echtes Foto fehlt (kein Asset) |
@@ -307,6 +355,10 @@ Duration: Days 19–21
 | localEnergyContributionPercent + municipalRevenueEurPerYear | Werden in M6 berechnet; derzeit null → UI zeigt „–" |
 
 ---
+
+Resolved in M6 (2026-06-26): `localEnergyContributionPercent` und `municipalRevenueEurPerYear` werden jetzt berechnet; der Detail-Screen zeigt zusaetzlich Laermschaetzung und Transparenz-Zusammenfassung.
+
+Note 2026-06-26: Die Profilkarte mit Avatar/Stats ist UI-seitig umgesetzt. Offen bleiben echte Auth/Profile-Daten und serverseitige Synchronisation.
 
 # Key File Locations
 

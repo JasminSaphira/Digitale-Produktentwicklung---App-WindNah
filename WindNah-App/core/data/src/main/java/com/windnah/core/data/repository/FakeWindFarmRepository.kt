@@ -1,6 +1,7 @@
 package com.windnah.core.data.repository
 
 import com.windnah.core.domain.repository.WindFarmRepository
+import com.windnah.core.domain.usecase.WindFarmMetricCalculator
 import com.windnah.core.model.EnergyMetrics
 import com.windnah.core.model.WindFarm
 import com.windnah.core.model.WindFarmDetail
@@ -48,6 +49,27 @@ class FakeWindFarmRepository @Inject constructor() : WindFarmRepository {
         }
 
         val mockPreviews: List<WindFarmPreview> get() = mockWindFarms
+
+        private fun estimatedLocalEnergyContributionPercent(
+            totalCapacityKw: Double,
+            turbineCount: Int,
+        ): Double = WindFarmMetricCalculator.calculateLocalEnergyContributionPercent(
+            WindFarm(
+                id = "estimated",
+                name = "Estimated",
+                municipality = "Estimated",
+                federalState = "Estimated",
+                latitude = 0.0,
+                longitude = 0.0,
+                status = WindFarmStatus.IN_BETRIEB,
+                turbineCount = turbineCount,
+                totalCapacityKw = totalCapacityKw,
+                commissioningYear = null,
+            ),
+        )
+
+        private fun estimatedMunicipalRevenueEur(annualKwh: Double): Double =
+            WindFarmMetricCalculator.calculateMunicipalRevenueEur(annualKwh)
 
         private val mockTurbines: Map<String, List<WindTurbine>> = mapOf(
             "windpark-uckermark" to (1..14).map { i ->
@@ -143,8 +165,8 @@ class FakeWindFarmRepository @Inject constructor() : WindFarmRepository {
                     estimatedAnnualProductionKwh = 92_000_000.0,
                     householdsSupplied = 26_000,
                     co2SavingsTonnesPerYear = 38_600.0,
-                    localEnergyContributionPercent = null,
-                    municipalRevenueEurPerYear = null,
+                    localEnergyContributionPercent = estimatedLocalEnergyContributionPercent(42_000.0, 14),
+                    municipalRevenueEurPerYear = estimatedMunicipalRevenueEur(92_000_000.0),
                 ),
             ),
             WindFarmPreview(
@@ -166,8 +188,8 @@ class FakeWindFarmRepository @Inject constructor() : WindFarmRepository {
                     estimatedAnnualProductionKwh = 74_000_000.0,
                     householdsSupplied = 20_900,
                     co2SavingsTonnesPerYear = 31_100.0,
-                    localEnergyContributionPercent = null,
-                    municipalRevenueEurPerYear = null,
+                    localEnergyContributionPercent = estimatedLocalEnergyContributionPercent(31_500.0, 9),
+                    municipalRevenueEurPerYear = estimatedMunicipalRevenueEur(74_000_000.0),
                 ),
             ),
             WindFarmPreview(
@@ -189,8 +211,8 @@ class FakeWindFarmRepository @Inject constructor() : WindFarmRepository {
                     estimatedAnnualProductionKwh = 86_500_000.0,
                     householdsSupplied = 24_400,
                     co2SavingsTonnesPerYear = 36_300.0,
-                    localEnergyContributionPercent = null,
-                    municipalRevenueEurPerYear = null,
+                    localEnergyContributionPercent = estimatedLocalEnergyContributionPercent(39_600.0, 11),
+                    municipalRevenueEurPerYear = estimatedMunicipalRevenueEur(86_500_000.0),
                 ),
             ),
             WindFarmPreview(
@@ -212,8 +234,8 @@ class FakeWindFarmRepository @Inject constructor() : WindFarmRepository {
                     estimatedAnnualProductionKwh = 61_000_000.0,
                     householdsSupplied = 17_200,
                     co2SavingsTonnesPerYear = 25_600.0,
-                    localEnergyContributionPercent = null,
-                    municipalRevenueEurPerYear = null,
+                    localEnergyContributionPercent = estimatedLocalEnergyContributionPercent(28_000.0, 7),
+                    municipalRevenueEurPerYear = estimatedMunicipalRevenueEur(61_000_000.0),
                 ),
             ),
             WindFarmPreview(
@@ -235,8 +257,8 @@ class FakeWindFarmRepository @Inject constructor() : WindFarmRepository {
                     estimatedAnnualProductionKwh = 0.0,
                     householdsSupplied = 0,
                     co2SavingsTonnesPerYear = 0.0,
-                    localEnergyContributionPercent = null,
-                    municipalRevenueEurPerYear = null,
+                    localEnergyContributionPercent = estimatedLocalEnergyContributionPercent(4_500.0, 3),
+                    municipalRevenueEurPerYear = estimatedMunicipalRevenueEur(0.0),
                 ),
             ),
         )

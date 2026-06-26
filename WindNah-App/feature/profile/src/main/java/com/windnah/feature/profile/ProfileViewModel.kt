@@ -22,9 +22,61 @@ class ProfileViewModel @Inject constructor(
             initialValue = false,
         )
 
+    val isLocationUsageEnabled: StateFlow<Boolean> = userPreferencesRepository.isLocationUsageEnabled
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = false,
+        )
+
+    val showLiveOutputMetric: StateFlow<Boolean> = userPreferencesRepository.showLiveOutputMetric
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = true,
+        )
+
+    val showCo2SavingsMetric: StateFlow<Boolean> = userPreferencesRepository.showCo2SavingsMetric
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = true,
+        )
+
+    val showHouseholdsMetric: StateFlow<Boolean> = userPreferencesRepository.showHouseholdsMetric
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = true,
+        )
+
     fun setDarkModeEnabled(enabled: Boolean) {
         viewModelScope.launch {
             userPreferencesRepository.setDarkModeEnabled(enabled)
+        }
+    }
+
+    fun setLocationUsageEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setLocationUsageEnabled(enabled)
+        }
+    }
+
+    fun setShowLiveOutputMetric(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setShowLiveOutputMetric(enabled)
+        }
+    }
+
+    fun setShowCo2SavingsMetric(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setShowCo2SavingsMetric(enabled)
+        }
+    }
+
+    fun setShowHouseholdsMetric(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setShowHouseholdsMetric(enabled)
         }
     }
 }

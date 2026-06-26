@@ -2,6 +2,7 @@ package com.windnah.feature.discover
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.windnah.core.domain.repository.UserPreferencesRepository
 import com.windnah.core.domain.usecase.GetDiscoverWindFarmsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -25,6 +26,7 @@ private const val SEARCH_DEBOUNCE_MS = 300L
 @HiltViewModel
 class DiscoverViewModel @Inject constructor(
     private val getDiscoverWindFarmsUseCase: GetDiscoverWindFarmsUseCase,
+    private val userPreferencesRepository: UserPreferencesRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DiscoverUiState())
@@ -40,6 +42,17 @@ class DiscoverViewModel @Inject constructor(
             .onEach { loadWindFarms() }
             .launchIn(viewModelScope)
 
+        userPreferencesRepository.isLocationUsageEnabled
+            .onEach { enabled ->
+                _uiState.update { state ->
+                    state.copy(
+                        isLocationUsageEnabled = enabled,
+                        isResolvingCurrentLocation = if (enabled) state.isResolvingCurrentLocation else false,
+                    )
+                }
+            }
+            .launchIn(viewModelScope)
+
         loadWindFarms()
     }
 
@@ -50,17 +63,35 @@ class DiscoverViewModel @Inject constructor(
                 // loadWindFarms() is triggered via the debounced searchQuery flow in init
             }
 
-            is DiscoverUiEvent.StatusFilterSelected -> {
+            is DiscoverUiEvent.StatusFilterToggled -> {
                 _uiState.update { state ->
+                    val current = state.selectedStatuses
                     state.copy(
-                        selectedStatus = if (state.selectedStatus == event.status) null else event.status,
+                        selectedStatuses = if (event.status in current) {
+                            current - event.status
+                        } else {
+                            current + event.status
+                        },
                     )
                 }
                 loadWindFarms()
             }
 
             is DiscoverUiEvent.FederalStateFilterSelected -> {
-                _uiState.update { it.copy(selectedFederalState = event.federalState) }
+                _uiState.update { state ->
+                    val nextToken = (state.mapRecenterRequest?.requestToken ?: 0) + 1
+                    val recenter = if (event.federalState != null) {
+                        FederalStateCenters[event.federalState]?.let { center ->
+                            MapRecenterRequest(center.latitude, center.longitude, center.zoom, nextToken)
+                        }
+                    } else {
+                        MapRecenterRequest(GermanyCenterLat, GermanyCenterLon, GermanyDefaultZoom, nextToken)
+                    }
+                    state.copy(
+                        selectedFederalState = event.federalState,
+                        mapRecenterRequest = recenter ?: state.mapRecenterRequest,
+                    )
+                }
                 loadWindFarms()
             }
 
@@ -71,6 +102,11 @@ class DiscoverViewModel @Inject constructor(
             }
 
             is DiscoverUiEvent.LocationPermissionUpdated -> {
+                if (!event.granted) {
+                    viewModelScope.launch {
+                        userPreferencesRepository.setLocationUsageEnabled(false)
+                    }
+                }
                 _uiState.update { state ->
                     state.copy(
                         hasLocationPermission = event.granted,
@@ -81,7 +117,7 @@ class DiscoverViewModel @Inject constructor(
 
             DiscoverUiEvent.RecenterRequested -> {
                 _uiState.update { state ->
-                    if (!state.hasLocationPermission) {
+                    if (!state.hasLocationPermission || !state.isLocationUsageEnabled) {
                         state
                     } else {
                         state.copy(
@@ -123,7 +159,7 @@ class DiscoverViewModel @Inject constructor(
                 _uiState.update { state ->
                     state.copy(
                         searchQuery = "",
-                        selectedStatus = null,
+                        selectedStatuses = emptySet(),
                         selectedFederalState = null,
                     )
                 }
@@ -140,6 +176,20 @@ class DiscoverViewModel @Inject constructor(
         }
     }
 
+    fun setLocationUsageEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.setLocationUsageEnabled(enabled)
+        }
+    }
+
+    fun enableLocationUsageAndRecenter() {
+        _uiState.update { it.copy(isLocationUsageEnabled = true) }
+        viewModelScope.launch {
+            userPreferencesRepository.setLocationUsageEnabled(true)
+        }
+        onEvent(DiscoverUiEvent.RecenterRequested)
+    }
+
     private fun loadWindFarms() {
         loadJob?.cancel()
         val state = _uiState.value
@@ -153,7 +203,7 @@ class DiscoverViewModel @Inject constructor(
         loadJob = viewModelScope.launch {
             getDiscoverWindFarmsUseCase(
                 searchQuery = state.searchQuery,
-                selectedStatus = state.selectedStatus,
+                selectedStatuses = state.selectedStatuses,
                 selectedFederalState = state.selectedFederalState,
             )
                 .catch {

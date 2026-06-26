@@ -32,5 +32,8 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.hilt.android)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.room.runtime)
     ksp(libs.hilt.android.compiler)
+
+    testImplementation(libs.junit)
 }

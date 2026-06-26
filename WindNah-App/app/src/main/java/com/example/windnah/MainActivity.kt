@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.FactCheck
@@ -20,8 +21,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -40,6 +43,7 @@ import com.example.windnah.ui.theme.WindNahNavOnSurfaceVariant
 import com.example.windnah.ui.theme.WindNahNavOnSurfaceVariantDark
 import com.example.windnah.ui.theme.WindNahNavSurface
 import com.example.windnah.ui.theme.WindNahNavSurfaceDark
+import com.example.windnah.ui.theme.WindNahSystemBars
 import com.example.windnah.ui.theme.WindNahTheme
 import com.windnah.feature.onboarding.LaunchScreen
 import dagger.hilt.android.AndroidEntryPoint
@@ -55,6 +59,7 @@ class MainActivity : ComponentActivity() {
             val darkModeEnabled by appViewModel.darkModeEnabled.collectAsStateWithLifecycle()
 
             WindNahTheme(darkTheme = darkModeEnabled) {
+                WindNahSystemBars()
 
                 if (startDestination == null) {
                     LaunchScreen()
@@ -134,6 +139,11 @@ private fun WindNahApp(
         bottomBar = {
             if (currentRoute in bottomNavRoutes) {
                 NavigationBar(
+                    modifier = Modifier.shadow(
+                        elevation = 6.dp,
+                        shape = RectangleShape,
+                        clip = false,
+                    ),
                     containerColor = navColors.containerColor,
                     windowInsets = WindowInsets(0, 0, 0, 0),
                 ) {

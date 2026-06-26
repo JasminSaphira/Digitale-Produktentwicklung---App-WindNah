@@ -431,23 +431,29 @@ Goal:
 
 All WindNah metrics are functional.
 
+Status:
+
+Implemented on 2026-06-26.
+
 ---
 
 ## Deliverables
 
-### Current Output
+### Current Output - implemented
 
-### Households Supplied
+### Annual Production - implemented
 
-### CO₂ Savings
+### Households Supplied - implemented
 
-### Local Contribution
+### CO2 Savings - implemented
 
-### Municipal Revenue
+### Local Contribution - implemented
 
-### Noise Estimation
+### Municipal Revenue - implemented
 
-### Average Turbine Height
+### Noise Estimation - implemented
+
+### Transparency Metadata - implemented
 
 ---
 
@@ -456,6 +462,12 @@ All WindNah metrics are functional.
 All calculations produce valid values.
 
 Transparency metadata available.
+
+Verified with:
+
+* `:core:domain:test`
+* `:core:data:test`
+* `:feature:windpark-detail:compileDebugKotlin`
 
 ---
 

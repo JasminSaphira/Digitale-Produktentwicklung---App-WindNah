@@ -6,6 +6,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -27,23 +29,22 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.windnah.core.designsystem.components.FactCard
+import com.windnah.core.designsystem.components.WindNahScreenHeader
 import com.windnah.core.model.FactCategory
 
-private val FactsBackground = Color(0xFFF8FBF1)
-private val FactsHeaderStart = Color(0xFFD7E8CD)
 private val FactsPrimary = Color(0xFF3F6836)
 private val FactsTextSecondary = Color(0xFF49454F)
 
 @Composable
 fun FactsScreen(
     modifier: Modifier = Modifier,
+    onNavigateToMap: () -> Unit = {},
     viewModel: FactsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -52,6 +53,7 @@ fun FactsScreen(
         uiState = uiState,
         onCategorySelected = viewModel::onCategorySelected,
         onRetry = viewModel::retry,
+        onNavigateToMap = onNavigateToMap,
         modifier = modifier,
     )
 }
@@ -61,112 +63,88 @@ private fun FactsScreenContent(
     uiState: FactsUiState,
     onCategorySelected: (FactCategory?) -> Unit,
     onRetry: () -> Unit,
+    onNavigateToMap: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    LazyColumn(
+    Scaffold(
         modifier = modifier
-            .fillMaxSize()
-            .background(FactsBackground),
-    ) {
-        item {
-            FactsHeader()
-        }
-        item {
-            FactsCategoryTabs(
-                selectedCategory = uiState.selectedCategory,
-                onCategorySelected = onCategorySelected,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
+            .fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            WindNahScreenHeader(
+                title = "Fakten",
+                subtitle = "Mythen klären, Wissen vertiefen",
+                onBackClick = onNavigateToMap,
             )
-        }
+        },
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
+            contentPadding = PaddingValues(
+                top = innerPadding.calculateTopPadding() + 24.dp,
+                bottom = innerPadding.calculateBottomPadding() + 32.dp,
+            ),
+        ) {
+            item {
+                FactsCategoryTabs(
+                    selectedCategory = uiState.selectedCategory,
+                    onCategorySelected = onCategorySelected,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                )
+            }
 
-        when {
-            uiState.isLoading -> {
-                item {
-                    FactsLoadingState(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 64.dp),
-                    )
+            when {
+                uiState.isLoading -> {
+                    item {
+                        FactsLoadingState(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 64.dp),
+                        )
+                    }
+                }
+
+                uiState.errorMessage != null -> {
+                    item {
+                        FactsErrorState(
+                            message = uiState.errorMessage,
+                            onRetry = onRetry,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 32.dp, vertical = 48.dp),
+                        )
+                    }
+                }
+
+                else -> {
+                    items(
+                        items = uiState.facts,
+                        key = { it.id },
+                    ) { fact ->
+                        FactCard(
+                            myth = fact.myth,
+                            explanation = fact.explanation,
+                            sources = fact.sources,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 28.dp, vertical = 12.dp),
+                        )
+                    }
                 }
             }
 
-            uiState.errorMessage != null -> {
-                item {
-                    FactsErrorState(
-                        message = uiState.errorMessage,
-                        onRetry = onRetry,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 32.dp, vertical = 48.dp),
-                    )
-                }
+            item {
+                FactsFooter(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 32.dp)
+                        .padding(top = 16.dp),
+                )
             }
-
-            else -> {
-                items(
-                    items = uiState.facts,
-                    key = { it.id },
-                ) { fact ->
-                    FactCard(
-                        myth = fact.myth,
-                        explanation = fact.explanation,
-                        sources = fact.sources,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 28.dp, vertical = 12.dp),
-                    )
-                }
-            }
-        }
-
-        item {
-            FactsFooter(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 32.dp)
-                    .padding(top = 16.dp, bottom = 32.dp),
-            )
-        }
-    }
-}
-
-@Composable
-private fun FactsHeader(
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(151.dp)
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(FactsHeaderStart, Color.White),
-                ),
-            )
-            .padding(horizontal = 32.dp),
-        contentAlignment = Alignment.CenterStart,
-    ) {
-        Column {
-            Text(
-                text = "Fakten-Check",
-                style = MaterialTheme.typography.headlineLarge.copy(
-                    color = FactsPrimary,
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Bold,
-                    lineHeight = 38.sp,
-                ),
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Neutral · Belegt · Verständlich",
-                style = MaterialTheme.typography.bodyLarge.copy(
-                    color = FactsTextSecondary,
-                    fontSize = 18.sp,
-                    lineHeight = 25.sp,
-                ),
-            )
         }
     }
 }
@@ -283,7 +261,7 @@ private fun FactsFooter(
         )
         Spacer(modifier = Modifier.height(12.dp))
         Text(
-            text = "© Umweltbundesamt · BMDS 2026",
+            text = "Umweltbundesamt 2026",
             style = MaterialTheme.typography.labelSmall.copy(
                 color = FactsPrimary,
                 fontWeight = FontWeight.Medium,
