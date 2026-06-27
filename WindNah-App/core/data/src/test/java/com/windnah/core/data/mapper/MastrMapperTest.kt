@@ -56,4 +56,51 @@ class MastrMapperTest {
         assertNotNull(preview.energyMetrics.localEnergyContributionPercent)
         assertNotNull(preview.energyMetrics.municipalRevenueEurPerYear)
     }
+
+    @Test
+    fun `unnamed units in same municipality but far apart become separate parks`() {
+        // Both in Prenzlau, but ~30 km apart and without a windpark name. The old grouping
+        // (gemeinde+plz) collapsed these into one park; geo-clustering keeps them separate.
+        val units = listOf(
+            unnamedUnit(mastrNummer = "u1", lat = 53.31, lon = 13.86),
+            unnamedUnit(mastrNummer = "u2", lat = 53.31, lon = 13.86), // same cell as u1
+            unnamedUnit(mastrNummer = "u3", lat = 53.60, lon = 14.20), // far away
+        )
+
+        val previews = units.toWindFarmPreviews()
+
+        assertEquals(2, previews.size)
+    }
+
+    @Test
+    fun `detail lookup returns the same units that built the preview`() {
+        val units = listOf(
+            unnamedUnit(mastrNummer = "u1", lat = 53.31, lon = 13.86),
+            unnamedUnit(mastrNummer = "u2", lat = 53.31, lon = 13.86),
+            unnamedUnit(mastrNummer = "u3", lat = 53.60, lon = 14.20),
+        )
+        val preview = units.toWindFarmPreviews().first { it.windFarm.turbineCount == 2 }
+
+        val matched = units.unitsForWindFarmId(preview.windFarm.id)
+
+        assertEquals(2, matched.size)
+        assertEquals(setOf("u1", "u2"), matched.map { it.mastrNummer }.toSet())
+    }
+
+    private fun unnamedUnit(mastrNummer: String, lat: Double, lon: Double) = MastrWindUnitDto(
+        mastrNummer = mastrNummer,
+        windparkName = null,
+        gemeinde = "Prenzlau",
+        bundesland = "Brandenburg",
+        postleitzahl = "17291",
+        breitengrad = lat,
+        laengengrad = lon,
+        nettonennleistungKw = 2_000.0,
+        rotorblattlaengeM = 70.0,
+        nabenhoeheM = 100.0,
+        inbetriebnahmedatum = "2020-05-01",
+        betriebsstatus = "InBetrieb",
+        hersteller = "Enercon",
+        typenbezeichnung = "E-126",
+    )
 }

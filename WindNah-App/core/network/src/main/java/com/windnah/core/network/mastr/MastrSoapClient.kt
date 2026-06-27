@@ -1,5 +1,6 @@
 package com.windnah.core.network.mastr
 
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -29,7 +30,7 @@ internal const val MASTR_API_KEY =
 internal const val MASTR_MARKTAKTEUR = "SOM961179242694"
 
 private const val MAX_LIST_PAGES = 1
-private const val MAX_DETAIL_REQUESTS = 100
+private const val MAX_DETAIL_REQUESTS = 300
 
 class MastrSoapClient(private val okHttpClient: OkHttpClient) {
 
@@ -39,8 +40,10 @@ class MastrSoapClient(private val okHttpClient: OkHttpClient) {
      * 2. GetEinheitWind per number — fetches full data (coords, park name, specs)
      */
     fun getWindEinheiten(): List<MastrWindUnitDto> {
-        val mastrNummern = fetchWindEinheitNummern().take(MAX_DETAIL_REQUESTS)
-        return runBlocking(Dispatchers.IO) {
+        val allNummern = fetchWindEinheitNummern()
+        val mastrNummern = allNummern.take(MAX_DETAIL_REQUESTS)
+        Log.d("MastrSoap", "list returned ${allNummern.size} nummern, fetching ${mastrNummern.size} details")
+        val units = runBlocking(Dispatchers.IO) {
             mastrNummern
                 .chunked(20)
                 .flatMap { chunk ->
@@ -48,6 +51,8 @@ class MastrSoapClient(private val okHttpClient: OkHttpClient) {
                 }
                 .filterNotNull()
         }
+        Log.d("MastrSoap", "parsed ${units.size} valid wind units")
+        return units
     }
 
     private fun fetchWindEinheitNummern(): List<String> {

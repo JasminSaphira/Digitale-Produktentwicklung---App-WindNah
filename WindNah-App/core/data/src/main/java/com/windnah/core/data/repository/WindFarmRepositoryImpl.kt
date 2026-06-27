@@ -1,8 +1,8 @@
 package com.windnah.core.data.repository
 
-import com.windnah.core.data.mapper.buildWindFarmId
 import com.windnah.core.data.mapper.toWindFarmPreviews
 import com.windnah.core.data.mapper.toWindTurbines
+import com.windnah.core.data.mapper.unitsForWindFarmId
 import com.windnah.core.domain.repository.WindFarmRepository
 import com.windnah.core.model.EnergyMetrics
 import com.windnah.core.model.WindFarm
@@ -14,6 +14,8 @@ import com.windnah.core.network.mastr.MastrRemoteDataSource
 import com.windnah.core.network.mastr.MastrWindUnitDto
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -24,6 +26,7 @@ class WindFarmRepositoryImpl @Inject constructor(
 
     private var cachedUnits: List<MastrWindUnitDto>? = null
     private var cachedPreviews: List<WindFarmPreview>? = null
+    private val fetchMutex = Mutex()
 
     override fun observeWindFarmPreviews(): Flow<List<WindFarmPreview>> = flow {
         val previews = cachedPreviews ?: fetchAndCacheWithFallback()
@@ -35,27 +38,12 @@ class WindFarmRepositoryImpl @Inject constructor(
         val allUnits = cachedUnits
 
         val decodedId = runCatching { java.net.URLDecoder.decode(windFarmId, "UTF-8") }.getOrElse { windFarmId }
-val preview = previews.firstOrNull { it.windFarm.id == decodedId }
+        val preview = previews.firstOrNull { it.windFarm.id == decodedId }
             ?: run { emit(null); return@flow }
 
-        // If we have real MaStR units, find matching turbines
+        // If we have real MaStR units, find matching turbines using the same grouping as previews
         val turbines = if (allUnits != null) {
-            val farmUnits = allUnits.filter { dto ->
-                val candidateId = buildWindFarmId(
-                    name = dto.windparkName ?: "${dto.gemeinde}_${dto.postleitzahl}",
-                    federalState = dto.bundesland ?: "",
-                    lat = allUnits
-                        .filter { it.windparkName == dto.windparkName }
-                        .mapNotNull { it.breitengrad }.average()
-                        .let { if (it.isNaN()) dto.breitengrad ?: 0.0 else it },
-                    lon = allUnits
-                        .filter { it.windparkName == dto.windparkName }
-                        .mapNotNull { it.laengengrad }.average()
-                        .let { if (it.isNaN()) dto.laengengrad ?: 0.0 else it },
-                )
-                candidateId == decodedId
-            }
-            farmUnits.toWindTurbines(decodedId)
+            allUnits.unitsForWindFarmId(decodedId).toWindTurbines(decodedId)
         } else {
             // Fallback: generate mock turbines from wind farm aggregate data
             FakeWindFarmRepository.mockTurbinesFor(preview)
@@ -68,19 +56,26 @@ val preview = previews.firstOrNull { it.windFarm.id == decodedId }
         ))
     }
 
-    private suspend fun fetchAndCacheWithFallback(): List<WindFarmPreview> {
-        return runCatching {
-            val units = mastr.getWindUnits()
-            cachedUnits = units
-            val previews = units.toWindFarmPreviews()
-            cachedPreviews = previews
-            previews
-        }.getOrElse {
-            // MaStR not reachable — use built-in mock data so the app stays functional
-            val fallback = FakeWindFarmRepository.mockPreviews
-            cachedPreviews = fallback
-            cachedUnits = null
-            fallback
+    private suspend fun fetchAndCacheWithFallback(): List<WindFarmPreview> =
+        fetchMutex.withLock {
+            // Re-check inside lock — another coroutine may have already fetched
+            cachedPreviews?.let { return@withLock it }
+            runCatching {
+                val units = mastr.getWindUnits()
+                cachedUnits = units
+                val previews = units.toWindFarmPreviews()
+                cachedPreviews = previews
+                previews
+            }.getOrElse { error ->
+                // Never swallow coroutine cancellation — rethrow so the caller can cancel cleanly
+                // instead of falling back to mock data when a load is simply superseded.
+                if (error is kotlinx.coroutines.CancellationException) throw error
+                android.util.Log.e("WindFarmRepo", "fetch/map failed, falling back to mock data", error)
+                // MaStR not reachable — use built-in mock data so the app stays functional
+                val fallback = FakeWindFarmRepository.mockPreviews
+                cachedPreviews = fallback
+                cachedUnits = null
+                fallback
+            }
         }
-    }
 }
