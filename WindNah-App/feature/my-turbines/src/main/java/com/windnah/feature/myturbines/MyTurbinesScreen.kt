@@ -266,10 +266,7 @@ private fun FavoriteWindFarmCard(
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(
-                        onClick = onRemoveFavorite,
-                        modifier = Modifier.size(32.dp),
-                    ) {
+                    IconButton(onClick = onRemoveFavorite) {
                         Icon(
                             imageVector = Icons.Filled.Star,
                             contentDescription = "Aus Favoriten entfernen",

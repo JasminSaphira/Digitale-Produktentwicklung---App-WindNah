@@ -226,16 +226,22 @@ private fun WindFarmHeader(
             onClick = onNavigateBack,
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .padding(start = 16.dp, top = 16.dp)
-                .size(32.dp)
-                .background(Color(0x66191D17), RoundedCornerShape(16.dp)),
+                .padding(start = 16.dp, top = 16.dp),
         ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                contentDescription = "Zurueck",
-                tint = Color.White,
-                modifier = Modifier.size(18.dp),
-            )
+            // 32dp tinted circle (Figma), but the IconButton keeps its 48dp touch target.
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .background(Color(0x66191D17), RoundedCornerShape(16.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                    contentDescription = "Zurueck",
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
         }
 
         Row(
@@ -245,38 +251,42 @@ private fun WindFarmHeader(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconButton(
-                onClick = onFavoriteClick,
-                modifier = Modifier
-                    .size(32.dp)
-                    .background(
-                        color = if (isFavorite) Color(0xCC191D17) else Color(0x66191D17),
-                        shape = RoundedCornerShape(16.dp),
-                    ),
-            ) {
-                Icon(
-                    imageVector = if (isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
-                    contentDescription = if (isFavorite) {
-                        "Aus Favoriten entfernen"
-                    } else {
-                        "Als Favorit speichern"
-                    },
-                    tint = if (isFavorite) Color(0xFFF9CD55) else Color.White,
-                    modifier = Modifier.size(18.dp),
-                )
+            IconButton(onClick = onFavoriteClick) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .background(
+                            color = if (isFavorite) Color(0xCC191D17) else Color(0x66191D17),
+                            shape = RoundedCornerShape(16.dp),
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                        contentDescription = if (isFavorite) {
+                            "Aus Favoriten entfernen"
+                        } else {
+                            "Als Favorit speichern"
+                        },
+                        tint = if (isFavorite) Color(0xFFF9CD55) else Color.White,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
             }
-            IconButton(
-                onClick = {},
-                modifier = Modifier
-                    .size(32.dp)
-                    .background(Color(0x66191D17), RoundedCornerShape(16.dp)),
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Share,
-                    contentDescription = "Teilen",
-                    tint = Color.White,
-                    modifier = Modifier.size(18.dp),
-                )
+            IconButton(onClick = {}) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .background(Color(0x66191D17), RoundedCornerShape(16.dp)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Share,
+                        contentDescription = "Teilen",
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
             }
         }
 

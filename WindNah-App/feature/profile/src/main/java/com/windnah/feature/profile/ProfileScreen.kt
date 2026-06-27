@@ -6,6 +6,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,7 +30,6 @@ import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Air
 import androidx.compose.material.icons.outlined.CheckBox
-import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Eco
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Email
@@ -37,7 +37,6 @@ import androidx.compose.material.icons.outlined.Feedback
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Language
-import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material.icons.outlined.Notifications
@@ -75,6 +74,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -92,7 +92,6 @@ fun ProfileScreen(
     viewModel: ProfileViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
-    val isDarkMode by viewModel.isDarkModeEnabled.collectAsStateWithLifecycle()
     val isLocationUsageEnabled by viewModel.isLocationUsageEnabled.collectAsStateWithLifecycle()
     val showLiveOutputMetric by viewModel.showLiveOutputMetric.collectAsStateWithLifecycle()
     val showCo2SavingsMetric by viewModel.showCo2SavingsMetric.collectAsStateWithLifecycle()
@@ -189,14 +188,6 @@ fun ProfileScreen(
 
             item {
                 ProfileSection(title = "Darstellung") {
-                    ProfileSwitchRow(
-                        icon = if (isDarkMode) Icons.Outlined.DarkMode else Icons.Outlined.LightMode,
-                        title = "Dunkelmodus",
-                        subtitle = "Dunkles Farbschema verwenden",
-                        checked = isDarkMode,
-                        onCheckedChange = viewModel::setDarkModeEnabled,
-                    )
-                    SectionDivider()
                     ProfileActionRow(
                         icon = Icons.Outlined.Language,
                         title = "Sprache",
@@ -539,6 +530,12 @@ private fun ProfileSwitchRow(
         modifier = Modifier
             .fillMaxWidth()
             .height(72.dp)
+            // Toggle the whole row as one element so TalkBack reads it as a single switch.
+            .toggleable(
+                value = checked,
+                onValueChange = onCheckedChange,
+                role = Role.Switch,
+            )
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -567,7 +564,8 @@ private fun ProfileSwitchRow(
         }
         Switch(
             checked = checked,
-            onCheckedChange = onCheckedChange,
+            // null: the toggleable Row above owns the click + semantics
+            onCheckedChange = null,
             colors = windNahSwitchColors(),
         )
     }

@@ -36,13 +36,9 @@ import com.example.windnah.navigation.ROUTE_MY_TURBINES
 import com.example.windnah.navigation.ROUTE_PROFILE
 import com.example.windnah.navigation.WindNahNavGraph
 import com.example.windnah.ui.theme.WindNahNavIndicator
-import com.example.windnah.ui.theme.WindNahNavIndicatorDark
 import com.example.windnah.ui.theme.WindNahNavOnIndicator
-import com.example.windnah.ui.theme.WindNahNavOnIndicatorDark
 import com.example.windnah.ui.theme.WindNahNavOnSurfaceVariant
-import com.example.windnah.ui.theme.WindNahNavOnSurfaceVariantDark
 import com.example.windnah.ui.theme.WindNahNavSurface
-import com.example.windnah.ui.theme.WindNahNavSurfaceDark
 import com.example.windnah.ui.theme.WindNahSystemBars
 import com.example.windnah.ui.theme.WindNahTheme
 import com.windnah.feature.onboarding.LaunchScreen
@@ -56,9 +52,8 @@ class MainActivity : ComponentActivity() {
         setContent {
             val appViewModel: AppViewModel = hiltViewModel()
             val startDestination by appViewModel.startDestination.collectAsStateWithLifecycle()
-            val darkModeEnabled by appViewModel.darkModeEnabled.collectAsStateWithLifecycle()
 
-            WindNahTheme(darkTheme = darkModeEnabled) {
+            WindNahTheme {
                 WindNahSystemBars()
 
                 if (startDestination == null) {
@@ -66,7 +61,6 @@ class MainActivity : ComponentActivity() {
                 } else {
                     WindNahApp(
                         startDestination = startDestination!!,
-                        darkTheme = darkModeEnabled,
                     )
                 }
             }
@@ -113,26 +107,16 @@ private val bottomNavRoutes = bottomNavItems.map { it.route }.toSet()
 @Composable
 private fun WindNahApp(
     startDestination: String,
-    darkTheme: Boolean,
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
-    val navColors = if (darkTheme) {
-        BottomNavColors(
-            containerColor = WindNahNavSurfaceDark,
-            indicatorColor = WindNahNavIndicatorDark,
-            selectedContentColor = WindNahNavOnIndicatorDark,
-            unselectedContentColor = WindNahNavOnSurfaceVariantDark,
-        )
-    } else {
-        BottomNavColors(
-            containerColor = WindNahNavSurface,
-            indicatorColor = WindNahNavIndicator,
-            selectedContentColor = WindNahNavOnIndicator,
-            unselectedContentColor = WindNahNavOnSurfaceVariant,
-        )
-    }
+    val navColors = BottomNavColors(
+        containerColor = WindNahNavSurface,
+        indicatorColor = WindNahNavIndicator,
+        selectedContentColor = WindNahNavOnIndicator,
+        unselectedContentColor = WindNahNavOnSurfaceVariant,
+    )
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),

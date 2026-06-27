@@ -860,10 +860,7 @@ private fun SelectedWindFarmSheetContent(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f),
                         )
-                        IconButton(
-                            onClick = onClose,
-                            modifier = Modifier.size(32.dp),
-                        ) {
+                        IconButton(onClick = onClose) {
                             Icon(
                                 Icons.Outlined.Close,
                                 contentDescription = "Vorschau schliessen",

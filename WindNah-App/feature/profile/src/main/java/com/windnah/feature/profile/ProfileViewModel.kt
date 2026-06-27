@@ -15,13 +15,6 @@ class ProfileViewModel @Inject constructor(
     private val userPreferencesRepository: UserPreferencesRepository,
 ) : ViewModel() {
 
-    val isDarkModeEnabled: StateFlow<Boolean> = userPreferencesRepository.isDarkModeEnabled
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = false,
-        )
-
     val isLocationUsageEnabled: StateFlow<Boolean> = userPreferencesRepository.isLocationUsageEnabled
         .stateIn(
             scope = viewModelScope,
@@ -49,12 +42,6 @@ class ProfileViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = true,
         )
-
-    fun setDarkModeEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            userPreferencesRepository.setDarkModeEnabled(enabled)
-        }
-    }
 
     fun setLocationUsageEnabled(enabled: Boolean) {
         viewModelScope.launch {

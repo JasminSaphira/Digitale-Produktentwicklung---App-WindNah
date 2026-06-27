@@ -16,9 +16,6 @@ class UserPreferencesRepositoryImpl @Inject constructor(
     override val hasCompletedOnboarding: Flow<Boolean> =
         dataStore.data.map { it[KEY_ONBOARDING_COMPLETED] ?: false }
 
-    override val isDarkModeEnabled: Flow<Boolean> =
-        dataStore.data.map { it[KEY_DARK_MODE_ENABLED] ?: false }
-
     override val isLocationUsageEnabled: Flow<Boolean> =
         dataStore.data.map { it[KEY_LOCATION_USAGE_ENABLED] ?: false }
 
@@ -33,10 +30,6 @@ class UserPreferencesRepositoryImpl @Inject constructor(
 
     override suspend fun setOnboardingCompleted() {
         dataStore.edit { it[KEY_ONBOARDING_COMPLETED] = true }
-    }
-
-    override suspend fun setDarkModeEnabled(enabled: Boolean) {
-        dataStore.edit { it[KEY_DARK_MODE_ENABLED] = enabled }
     }
 
     override suspend fun setLocationUsageEnabled(enabled: Boolean) {
@@ -57,7 +50,6 @@ class UserPreferencesRepositoryImpl @Inject constructor(
 
     companion object {
         private val KEY_ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
-        private val KEY_DARK_MODE_ENABLED = booleanPreferencesKey("dark_mode_enabled")
         private val KEY_LOCATION_USAGE_ENABLED = booleanPreferencesKey("location_usage_enabled")
         private val KEY_SHOW_LIVE_OUTPUT_METRIC = booleanPreferencesKey("show_live_output_metric")
         private val KEY_SHOW_CO2_SAVINGS_METRIC = booleanPreferencesKey("show_co2_savings_metric")
