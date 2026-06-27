@@ -455,6 +455,8 @@ Implemented on 2026-06-26.
 
 ### Transparency Metadata - implemented
 
+### App Icon - implemented
+
 ---
 
 ## Definition of Done
