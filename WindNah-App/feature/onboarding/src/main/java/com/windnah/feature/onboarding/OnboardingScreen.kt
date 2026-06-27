@@ -12,10 +12,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -220,25 +224,28 @@ private fun OnboardingPageContent(page: OnboardingPageData) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(top = 32.dp),
+            .verticalScroll(rememberScrollState())
+            .padding(top = 32.dp, bottom = 16.dp),
     ) {
-        // Media image – 260 dp tall on smaller screens, 24 dp rounded corners
+        // Media image – 24 dp rounded corners. Height capped relative to viewport so the
+        // headline + body always fit (and stay scrollable on very small screens).
         Image(
             painter = painterResource(page.imageRes),
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(330.dp)
+                .heightIn(max = 330.dp)
+                .aspectRatio(1.5f)
                 .clip(RoundedCornerShape(24.dp)),
         )
 
-        Spacer(modifier = Modifier.height(34.dp))
+        Spacer(modifier = Modifier.height(28.dp))
 
         // Headline + body
         Column(
             modifier = Modifier.padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(36.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             Text(
                 text = page.headline,
