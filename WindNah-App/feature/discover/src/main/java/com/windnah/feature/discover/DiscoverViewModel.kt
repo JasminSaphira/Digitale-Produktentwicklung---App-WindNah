@@ -99,7 +99,22 @@ class DiscoverViewModel @Inject constructor(
 
             is DiscoverUiEvent.WindFarmSelected -> {
                 _uiState.update { state ->
-                    state.copy(selectedWindFarm = state.windFarms.firstOrNull { it.windFarm.id == event.windFarmId })
+                    val selected = state.windFarms.firstOrNull { it.windFarm.id == event.windFarmId }
+                    val recenter = if (event.recenter && selected != null) {
+                        val nextToken = (state.mapRecenterRequest?.requestToken ?: 0) + 1
+                        MapRecenterRequest(
+                            latitude = selected.windFarm.latitude,
+                            longitude = selected.windFarm.longitude,
+                            zoom = 12.0,
+                            requestToken = nextToken,
+                        )
+                    } else {
+                        state.mapRecenterRequest
+                    }
+                    state.copy(
+                        selectedWindFarm = selected,
+                        mapRecenterRequest = recenter,
+                    )
                 }
             }
 

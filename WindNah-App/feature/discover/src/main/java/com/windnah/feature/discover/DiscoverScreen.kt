@@ -9,6 +9,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -354,6 +355,17 @@ private fun DiscoverTopControls(
             onClearQuery = { onEvent(DiscoverUiEvent.SearchQueryChanged("")) },
         )
 
+        // Live suggestions while typing — hidden once a park is selected
+        val showSuggestions = uiState.searchQuery.isNotBlank() &&
+            uiState.selectedWindFarm == null &&
+            uiState.windFarms.isNotEmpty()
+        if (showSuggestions) {
+            SearchSuggestions(
+                results = uiState.windFarms,
+                onSelect = { id -> onEvent(DiscoverUiEvent.WindFarmSelected(id, recenter = true)) },
+            )
+        }
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -405,6 +417,61 @@ private fun OfflineDataBanner(modifier: Modifier = Modifier) {
                 style = MaterialTheme.typography.labelLarge,
                 color = Color.White,
             )
+        }
+    }
+}
+
+@Composable
+private fun SearchSuggestions(
+    results: List<com.windnah.core.model.WindFarmPreview>,
+    onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val shown = results.take(6)
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 4.dp,
+    ) {
+        Column(modifier = Modifier.heightIn(max = 280.dp)) {
+            shown.forEachIndexed { index, preview ->
+                val farm = preview.windFarm
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onSelect(farm.id) }
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.LocationOn,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = farm.name,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Text(
+                            text = "${farm.municipality}, ${farm.federalState}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+                if (index < shown.lastIndex) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                }
+            }
         }
     }
 }
