@@ -404,6 +404,56 @@ Resolved in M6 (2026-06-26): `localEnergyContributionPercent` und `municipalReve
 
 Note 2026-06-26: Die Profilkarte mit Avatar/Stats ist UI-seitig umgesetzt. Offen bleiben echte Auth/Profile-Daten und serverseitige Synchronisation.
 
+---
+
+# Geplant (nicht umgesetzt): Authentifizierung – E-Mail + Google Sign-In
+
+Status: **NUR GEPLANT, kein Code umgesetzt** (Stand 2026-06-27)
+
+Aktuell sind `LoginScreen` und `RegistrationScreen` reine UI-Stubs (E-Mail-/Passwort-Felder,
+Google-Button, Navigation). Die `onClick`-Handler enthalten nur `TODO: Firebase Auth`. Es gibt
+keine Firebase-Anbindung, kein `AuthRepository`, kein `User`-Modell und keine Session-Persistenz.
+
+## Kosten
+- **Firebase Authentication (E-Mail/Passwort + Google) ist im Spark-Plan kostenlos und unbegrenzt** —
+  keine Kreditkarte nötig, keine MAU-Grenze für diesen Anwendungsfall.
+- **Achtung:** NICHT auf „Identity Platform" upgraden (anderes Preismodell, erst 50k MAU frei).
+- SMS-/Phone-Auth würde pro SMS kosten → wird hier **nicht** verwendet.
+- Cloud-Sync von Favoriten (Firestore) wäre separat kostenpflichtig ab Quota → **nicht geplant**,
+  Favoriten bleiben lokal in Room.
+
+## Teil A – Externes Setup (manuell, nur durch den/die Entwickler:in)
+1. Firebase-Projekt anlegen (~10 Min)
+2. Android-App registrieren mit Package `com.example.windnah`, `google-services.json` nach `app/` legen (~5 Min)
+3. Provider „E-Mail/Passwort" aktivieren (~2 Min)
+4. Provider „Google" aktivieren **+ SHA-1-Fingerprint des Debug-Keystores** in Firebase hinterlegen
+   (~15–20 Min, häufigste Fehlerquelle — ohne korrekten SHA-1 schlägt Google-Login still fehl)
+5. OAuth-Web-Client-ID aus Firebase kopieren (für Credential Manager)
+
+→ ~30–40 Min, SHA-1 ist der fummeligste Teil.
+
+## Teil B – Code (in der App)
+1. **Gradle**: `google-services`-Plugin, Firebase-BoM, `firebase-auth`, Credential-Manager-Deps
+   (~30 Zeilen über 3 Dateien)
+2. **core:model**: `User`-Modell · **core:domain**: `AuthRepository`-Interface + Result-Typen
+3. **core:data**: `FirebaseAuthRepository` — E-Mail-Login/Register, Google-Credential-Flow,
+   `currentUser`-Flow, Logout (der Google-Credential-Manager-Flow ist der aufwändigste Code-Teil)
+4. **feature:auth**: `LoginViewModel` + `RegisterViewModel`, bestehende Screens verdrahten
+   (Loading-/Fehler-States, deutsche Fehlermeldungen)
+5. **Session-Gating**: App-Start liest Auth-Zustand; Profil zeigt echten User + Logout;
+   Favoriten optional an User koppeln (berührt `AppViewModel`, Profil)
+6. **Verifikation**: Tests + Emulator (Login, Register, Google, Logout, Fehlerfälle)
+
+## Aufwandseinschätzung
+- **E-Mail/Passwort allein**: moderat (halb so viel Code, kein SHA-1-Setup).
+- **+ Google Sign-In**: verdoppelt grob den Aufwand und bringt das fehleranfällige externe Setup mit.
+- **Gesamt realistisch ~1–2 fokussierte Sessions.** Größtes Risiko liegt nicht im Code, sondern
+  im Firebase-/Google-Setup (SHA-1, OAuth-Client).
+- **Empfohlene Reihenfolge**: erst E-Mail/Passwort lauffähig machen (in sich geschlossen),
+  Google danach als separater Aufsatz — so blockiert das SHA-1-Setup nicht den ganzen Rest.
+
+---
+
 # Key File Locations
 
 | Was | Pfad |
