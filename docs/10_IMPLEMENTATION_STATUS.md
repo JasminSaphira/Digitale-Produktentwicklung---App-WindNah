@@ -1,7 +1,7 @@
 # WindNah – Implementation Status
 
-Version: 1.1
-Last Updated: 2026-06-21
+Version: 1.2
+Last Updated: 2026-06-27
 
 ---
 
@@ -353,16 +353,34 @@ Status Update 2026-06-27: Implemented / DONE
 
 ---
 
-# Milestone 9 – Polish ⏳ NOT STARTED
+# Milestone 9 – Polish 🟡 GRÖSSTENTEILS DONE
 
 Duration: Days 19–21
 
-## Planned
+Status Update 2026-06-27
 
-- Accessibility (TalkBack, Dynamic Fonts, 48dp Touch Targets)
-- Dark Mode vollständig
-- Bug Fixes
-- Performance
+## Implemented
+
+### Bugfixes
+- **Onboarding-PNGs repariert**: `onboarding_media_1/2/3.png` waren in Wirklichkeit JPEG-Dateien mit `.png`-Endung und schlugen beim Android-PNG-Cruncher fehl → blockierten `./gradlew test`. Zu echtem PNG re-encodiert (gleicher 824×549-Inhalt). **Voller `./gradlew test` läuft jetzt grün.**
+
+### Accessibility
+- **Touch Targets ≥ 48dp**: Die 32dp-Icon-Buttons im Header/Preview (Zurück, Favorit, Teilen, Vorschau schließen, Favoriten-Stern) behalten optisch ihren 32dp-Kreis, bekommen aber wieder die 48dp-Default-Klickfläche (getönter Kreis in innere `Box` verschoben). Relevant für die 50+-Zielgruppe.
+- **Switch-Semantik**: `ProfileSwitchRow` ist jetzt ein einzelnes `toggleable`-Element (`Role.Switch`) → TalkBack liest Titel + Untertitel + Schalter als eine Bedienelement-Einheit.
+- Content-Descriptions geprüft: eigenständige Icon-Buttons haben deutsche Beschreibungen; dekorative Icons neben sprechendem Text bleiben bewusst `null` (verhindert TalkBack-Doppelung).
+
+### Dark Mode — BEWUSST WEGGELASSEN
+- Es gibt **kein dediziertes Dark-Mode-Design in Figma** (nur ein Dunkelmodus-Toggle-Label im Profil; der Styleguide definiert nur das M3-Light-Token-System).
+- Ein Dark-Mode-Versuch wurde gestartet (Farb-Mapping auf M3-Tokens) und dann **auf Wunsch komplett verworfen**.
+- Dunkelmodus wurde anschließend **vollständig aus der App entfernt** (alle Schichten): Dark-ColorScheme + `darkTheme`-Parameter + Dark-Farbtokens raus, Dunkelmodus-Toggle aus dem Profil entfernt, `isDarkModeEnabled`/`setDarkModeEnabled` aus `UserPreferencesRepository` (Interface, Impl, DataStore-Key) und den ViewModels entfernt. **Die App ist fest Light-Theme.**
+
+## Offen
+- **UI-Polish** (Spacing/Typography-Feinschliff gegen das Design-System) — als optional/kosmetisch eingestuft, noch nicht umgesetzt.
+- Performance-Optimierungen (kein konkreter Bedarf identifiziert).
+
+## Verification
+- `./gradlew test` grün (alle Module inkl. App)
+- Emulator-Smoke: App startet hell, Dunkelmodus-Toggle ist weg, Switches funktionieren
 
 ---
 
@@ -378,6 +396,7 @@ Duration: Days 19–21
 | Profil: Benutzerprofil-Karte mit Avatar/Stats fehlt | Erfordert Auth → M7 |
 | Login ist Bottom Sheet statt vollständiger Screen | Vollständiges Login-Formular → M7 |
 | localEnergyContributionPercent + municipalRevenueEurPerYear | Werden in M6 berechnet; derzeit null → UI zeigt „–" |
+| Dark Mode | ⛔ Bewusst weggelassen — kein Figma-Dark-Design vorhanden; in M9 vollständig aus der App entfernt. App ist fest Light-Theme. |
 
 ---
 
