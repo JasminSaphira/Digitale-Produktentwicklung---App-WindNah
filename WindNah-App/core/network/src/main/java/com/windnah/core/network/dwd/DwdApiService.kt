@@ -10,6 +10,8 @@ interface DwdApiService {
     suspend fun getCurrentWeather(
         @Query("lat") lat: Double,
         @Query("lon") lon: Double,
+        // SI units → wind_speed in m/s (default is km/h), matching the power-curve calculations.
+        @Query("units") units: String = "si",
     ): BrightSkyCurrentWeatherResponse
 
     companion object {

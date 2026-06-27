@@ -11,8 +11,10 @@ data class BrightSkyCurrentWeatherResponse(
 
 @Serializable
 data class BrightSkyWeatherDto(
-    @SerialName("wind_speed") val windSpeedMs: Double? = null,
-    @SerialName("wind_direction") val windDirectionDeg: Double? = null,
+    // BrightSky exposes wind as 10/30/60-minute means; *_10 is the most recent.
+    // With units=si these are in m/s and degrees.
+    @SerialName("wind_speed_10") val windSpeedMs: Double? = null,
+    @SerialName("wind_direction_10") val windDirectionDeg: Double? = null,
     @SerialName("condition") val condition: String? = null,
     @SerialName("timestamp") val timestamp: String? = null,
 )
