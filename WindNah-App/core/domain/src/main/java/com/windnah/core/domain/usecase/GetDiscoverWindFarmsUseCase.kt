@@ -2,6 +2,7 @@ package com.windnah.core.domain.usecase
 
 import com.windnah.core.domain.repository.WindFarmRepository
 import com.windnah.core.model.WindFarmPreview
+import com.windnah.core.model.WindFarmPreviewsResult
 import com.windnah.core.model.WindFarmStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -14,14 +15,16 @@ class GetDiscoverWindFarmsUseCase @Inject constructor(
         searchQuery: String,
         selectedStatuses: Set<WindFarmStatus>,
         selectedFederalState: String?,
-    ): Flow<List<WindFarmPreview>> =
+    ): Flow<WindFarmPreviewsResult> =
         windFarmRepository.observeWindFarmPreviews()
-            .map { previews ->
-                previews.filter { preview ->
-                    preview.matchesSearch(searchQuery) &&
-                        preview.matchesStatuses(selectedStatuses) &&
-                        preview.matchesFederalState(selectedFederalState)
-                }
+            .map { result ->
+                result.copy(
+                    previews = result.previews.filter { preview ->
+                        preview.matchesSearch(searchQuery) &&
+                            preview.matchesStatuses(selectedStatuses) &&
+                            preview.matchesFederalState(selectedFederalState)
+                    },
+                )
             }
 
     private fun WindFarmPreview.matchesSearch(query: String): Boolean {

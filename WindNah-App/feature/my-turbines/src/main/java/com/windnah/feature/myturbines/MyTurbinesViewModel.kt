@@ -31,8 +31,8 @@ class MyTurbinesViewModel @Inject constructor(
             favoriteRepository.observeFavoriteIds(),
             recentlyViewedRepository.observeRecentlyViewedIds(limit = 10),
             windFarmRepository.observeWindFarmPreviews(),
-        ) { favoriteIds, recentlyViewedIds, windFarms ->
-            val windFarmsById = windFarms.associateBy { it.windFarm.id }
+        ) { favoriteIds, recentlyViewedIds, previewsResult ->
+            val windFarmsById = previewsResult.previews.associateBy { it.windFarm.id }
             MyTurbinesUiState(
                 favorites = favoriteIds.mapNotNull { windFarmsById[it] },
                 recentlyViewed = recentlyViewedIds.mapNotNull { windFarmsById[it] },

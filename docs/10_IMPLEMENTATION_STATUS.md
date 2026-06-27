@@ -316,15 +316,40 @@ Duration: Days 15–18
 
 ---
 
-# Milestone 8 – Offline Support ⏳ NOT STARTED
+# Milestone 8 – Offline Support ✅ DONE
 
 Duration: Days 17–19
 
-## Planned
+Status Update 2026-06-27: Implemented / DONE
 
-- Room-Datenbank (`core:database`)
-- Caching: Windparks, Fakten, Favoriten, zuletzt angesehen
-- Offline-Fehlermeldungen
+## Implemented
+
+- **Room-Cache für MaStR-Daten** (`core:database`): neue Entities `CachedWindFarmEntity` (Park + Energiemetriken flach) und `CachedTurbineEntity` (FK `windFarmId`, indiziert)
+- **`CachedWindFarmDao`** mit atomarem `replaceAll()` (`@Transaction`: clear + insert), `observeWindFarms()` (Flow), `getWindFarm`/`getTurbines`/`count`
+- **DB Version 2 → 3**, `MIGRATION_2_3` (drei `CREATE TABLE`/Index); in DataModule registriert + DAO-Provider ergänzt
+- **`WindFarmRepositoryImpl` auf Cache-First umgestellt**:
+  - emittiert sofort den persistierten Cache (offline sichtbar), refresht **immer** beim Start von MaStR
+  - bei Netzfehler bleibt der Cache erhalten; `CancellationException` wird durchgereicht (kein Fehl-Fallback)
+  - **Mock-Fallback entfernt**: `FakeWindFarmRepository` gelöscht; ohne Cache + offline → echte Fehlermeldung
+  - Detail-Turbinen kommen aus dem Room-Cache → Detailseite funktioniert offline
+  - `CacheMapper` für Entity ↔ Domain
+- **Offline-Signal in der UI**: neues `WindFarmPreviewsResult` (Previews + `isStale`) durch Domain/UseCase/ViewModel; dezenter Offline-Banner ("Offline – zwischengespeicherte Daten", CloudOff-Icon) im DiscoverScreen, wenn Cache bei fehlgeschlagenem Refresh gezeigt wird
+- **Wetter wird bewusst NICHT gecacht** (online-only): offline zeigt der Detail-Screen Stammdaten + ehrliches "– m/s · Keine Winddaten" statt eines veralteten Live-Werts
+
+## Verification (manuelles UAT am Emulator, 2026-06-27)
+
+- Online-Erstbefüllung: Karte lädt, kein Banner ✅
+- Offline mit Cache: gecachte Parks + Offline-Banner ✅
+- Offline-Detailseite: Stammdaten + Turbinen aus Cache, Output "Keine Winddaten" ✅
+- Wieder online: Refresh erfolgreich, Banner verschwindet ✅
+- Erstinstallation offline (leerer Cache): Empty-State "Windparks koennen aktuell nicht geladen werden" + Retry, keine Mock-Daten, kein Crash ✅
+- Retry nach Wiederverbindung lädt alle Parks ✅
+- DB-Migration 2 → 3 lief beim Update einer bestehenden v2-DB ohne Crash ✅
+
+## Offen (Future Milestones)
+
+- Caching von Fakten (liegen bereits als lokale Assets vor → kein Netz nötig)
+- Room-Migrations-/DAO-Unit-Tests (bewusst weggelassen, da `core:database` keine Test-Infrastruktur hat → ggf. M9)
 
 ---
 
@@ -346,7 +371,7 @@ Duration: Days 19–21
 | Issue | Status |
 |-------|--------|
 | Placeholder-Screens: MyTurbines | ✅ Umgesetzt in M7 (Favoriten + Zuletzt angesehen) |
-| Discover lädt echte MaStR-Daten via SOAP | Fallback auf Mock-Daten bei API-Fehler |
+| Discover lädt echte MaStR-Daten via SOAP | ✅ M8: Room-Cache-First; offline werden gecachte Daten gezeigt, Mock-Fallback entfernt |
 | Google Sign-In / Firebase Auth nicht integriert | Auth-Screens sind UI-Stubs → M7 |
 | Windpark-Thumbnail im Bottom Sheet: Gradient-Placeholder | Echtes Foto fehlt (kein Asset) |
 | Turbinenkarten: LazyRow statt M3-Carousel | Carousel-Peek-Ansicht → M6 |

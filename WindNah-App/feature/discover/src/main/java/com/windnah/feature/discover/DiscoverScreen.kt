@@ -31,6 +31,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Air
 import androidx.compose.material.icons.outlined.ArrowDropDown
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.Layers
@@ -373,6 +374,37 @@ private fun DiscoverTopControls(
                     onClick = { onEvent(DiscoverUiEvent.StatusFilterToggled(status)) },
                 )
             }
+        }
+
+        if (uiState.isOfflineData) {
+            OfflineDataBanner()
+        }
+    }
+}
+
+@Composable
+private fun OfflineDataBanner(modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        color = Color(0xFF53634E),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.CloudOff,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(18.dp),
+            )
+            Text(
+                text = "Offline – zwischengespeicherte Daten",
+                style = MaterialTheme.typography.labelLarge,
+                color = Color.White,
+            )
         }
     }
 }

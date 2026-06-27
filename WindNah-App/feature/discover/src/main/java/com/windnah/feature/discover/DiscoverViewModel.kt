@@ -216,7 +216,8 @@ class DiscoverViewModel @Inject constructor(
                         )
                     }
                 }
-                .collect { windFarms ->
+                .collect { result ->
+                    val windFarms = result.previews
                     _uiState.update { currentState ->
                         val selectedWindFarm = currentState.selectedWindFarm
                             ?.takeIf { selected -> windFarms.any { it.windFarm.id == selected.windFarm.id } }
@@ -224,6 +225,7 @@ class DiscoverViewModel @Inject constructor(
                         currentState.copy(
                             isLoading = false,
                             windFarms = windFarms,
+                            isOfflineData = result.isStale,
                             selectedWindFarm = selectedWindFarm,
                             errorMessage = currentState.errorMessage
                                 ?.takeIf { it == LOCATION_UNAVAILABLE_MESSAGE },

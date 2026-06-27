@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.room.Room
 import com.windnah.core.database.WindNahDatabase
+import com.windnah.core.database.cache.CachedWindFarmDao
 import com.windnah.core.database.favorite.FavoriteDao
 import com.windnah.core.database.recentlyviewed.RecentlyViewedDao
 import com.windnah.core.data.repository.FavoriteRepositoryImpl
@@ -84,7 +85,10 @@ abstract class DataModule {
                 WindNahDatabase::class.java,
                 "windnah.db",
             )
-                .addMigrations(WindNahDatabase.MIGRATION_1_2)
+                .addMigrations(
+                    WindNahDatabase.MIGRATION_1_2,
+                    WindNahDatabase.MIGRATION_2_3,
+                )
                 .build()
 
         @Provides
@@ -96,5 +100,10 @@ abstract class DataModule {
         @Singleton
         fun provideRecentlyViewedDao(database: WindNahDatabase): RecentlyViewedDao =
             database.recentlyViewedDao()
+
+        @Provides
+        @Singleton
+        fun provideCachedWindFarmDao(database: WindNahDatabase): CachedWindFarmDao =
+            database.cachedWindFarmDao()
     }
 }

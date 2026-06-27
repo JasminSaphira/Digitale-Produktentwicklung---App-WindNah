@@ -13,6 +13,7 @@ data class DiscoverUiState(
     val statusFilters: List<WindFarmStatus> = WindFarmStatus.entries,
     val federalStateFilters: List<String> = GermanFederalStates,
     val errorMessage: String? = null,
+    val isOfflineData: Boolean = false,
     val hasLocationPermission: Boolean = false,
     val isLocationUsageEnabled: Boolean = false,
     val isResolvingCurrentLocation: Boolean = false,

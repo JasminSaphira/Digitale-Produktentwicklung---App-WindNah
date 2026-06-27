@@ -7,6 +7,7 @@ import com.windnah.core.model.WeatherData
 import com.windnah.core.model.WindFarm
 import com.windnah.core.model.WindFarmDetail
 import com.windnah.core.model.WindFarmPreview
+import com.windnah.core.model.WindFarmPreviewsResult
 import com.windnah.core.model.WindFarmStatus
 import com.windnah.core.model.WindTurbine
 import kotlinx.coroutines.flow.Flow
@@ -74,7 +75,8 @@ class GetWindFarmDetailUseCaseTest {
 
         val useCase = GetWindFarmDetailUseCase(
             windFarmRepository = object : WindFarmRepository {
-                override fun observeWindFarmPreviews(): Flow<List<WindFarmPreview>> = flowOf(listOf(preview))
+                override fun observeWindFarmPreviews(): Flow<WindFarmPreviewsResult> =
+                    flowOf(WindFarmPreviewsResult(listOf(preview), isStale = false))
                 override fun observeWindFarmDetail(windFarmId: String): Flow<WindFarmDetail?> =
                     flowOf(WindFarmDetail(windFarm = windFarm, energyMetrics = preview.energyMetrics, turbines = turbines))
             },
