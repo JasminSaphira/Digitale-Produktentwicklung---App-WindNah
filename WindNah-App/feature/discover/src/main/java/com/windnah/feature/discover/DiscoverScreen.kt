@@ -250,6 +250,26 @@ private fun DiscoverContent(
                 ),
         )
 
+        // Search suggestions float over the filters/map (not in the layout flow),
+        // anchored just below the search field. Hidden once a park is selected.
+        val showSuggestions = uiState.searchQuery.isNotBlank() &&
+            uiState.selectedWindFarm == null &&
+            uiState.windFarms.isNotEmpty()
+        if (showSuggestions) {
+            SearchSuggestions(
+                results = uiState.windFarms,
+                query = uiState.searchQuery,
+                onSelect = { id -> onEvent(DiscoverUiEvent.WindFarmSelected(id, recenter = true)) },
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(
+                        start = FigmaHorizontalStart,
+                        end = FigmaHorizontalEnd,
+                        top = FigmaSearchTop + FigmaSearchHeight + 8.dp,
+                    ),
+            )
+        }
+
         when {
             uiState.isLoading -> {
                 LoadingOverlay(modifier = Modifier.align(Alignment.Center))
@@ -355,17 +375,6 @@ private fun DiscoverTopControls(
             onClearQuery = { onEvent(DiscoverUiEvent.SearchQueryChanged("")) },
         )
 
-        // Live suggestions while typing — hidden once a park is selected
-        val showSuggestions = uiState.searchQuery.isNotBlank() &&
-            uiState.selectedWindFarm == null &&
-            uiState.windFarms.isNotEmpty()
-        if (showSuggestions) {
-            SearchSuggestions(
-                results = uiState.windFarms,
-                onSelect = { id -> onEvent(DiscoverUiEvent.WindFarmSelected(id, recenter = true)) },
-            )
-        }
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -424,10 +433,16 @@ private fun OfflineDataBanner(modifier: Modifier = Modifier) {
 @Composable
 private fun SearchSuggestions(
     results: List<com.windnah.core.model.WindFarmPreview>,
+    query: String,
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val shown = results.take(6)
+    // Rank name-prefix matches first so short queries surface the obvious park,
+    // then keep the contains-matches the use case already filtered.
+    val q = query.trim().lowercase()
+    val shown = results
+        .sortedByDescending { it.windFarm.name.lowercase().startsWith(q) }
+        .take(6)
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
