@@ -131,6 +131,8 @@ Duration: Days 5–9
 - `DiscoverViewModel`, `DiscoverUiState` und `DiscoverUiEvent` eingefuehrt
 - Mock-Windparkdaten liegen hinter `WindFarmRepository` / `GetDiscoverWindFarmsUseCase`
 - Region-, Status- sowie ZIP-/Ortssuche filtern die tatsaechlich angezeigten Windparks ueber ViewModel/UseCase
+- Suche ist umlaut-tolerant (ae/ä, oe/ö, ue/ü, ss/ß werden beidseitig normalisiert)
+- **Live-Suchvorschlaege** (2026-06-27): waehrend des Tippens erscheint unter dem Suchfeld eine Dropdown-Liste passender Windparks (Name + Ort, max. 6); Tap auf einen Vorschlag zentriert die Karte auf den Park und oeffnet die Vorschau; die Liste schliesst sich nach Auswahl. `WindFarmSelected` hat dafuer ein `recenter`-Flag (true aus Vorschlaegen, false bei Marker-Taps)
 - Ein Material-3-Recenter-Button wurde ergaenzt; Standort bleibt optional, wird nicht gespeichert und nur fuer das Zentrieren verwendet
 - **Marker-Clustering**: Zoom-basiertes geografisches Clustering via Haversine-Distanz (nativ in Kotlin, kein bonuspack); Cluster-Marker zeigt Anzahl der Windparks; Tap auf Cluster zoomt hinein
 - **Figma-Polishing**: Layers-FAB (`#3C4B37`, 40dp, top=190dp); Marker-Badge oben links; Filter-Chip Radius 16dp; Chip-Spacing 10dp; Bundesland-Chip Padding korrekt (start=8, end=16dp)
