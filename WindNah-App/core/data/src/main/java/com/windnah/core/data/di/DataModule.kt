@@ -10,11 +10,13 @@ import com.windnah.core.database.cache.CachedWindFarmDao
 import com.windnah.core.database.favorite.FavoriteDao
 import com.windnah.core.database.recentlyviewed.RecentlyViewedDao
 import com.windnah.core.data.repository.FavoriteRepositoryImpl
+import com.windnah.core.data.repository.FirebaseAuthRepository
 import com.windnah.core.data.repository.LocalMarkdownFactRepository
 import com.windnah.core.data.repository.RecentlyViewedRepositoryImpl
 import com.windnah.core.data.repository.UserPreferencesRepositoryImpl
 import com.windnah.core.data.repository.WeatherRepositoryImpl
 import com.windnah.core.data.repository.WindFarmRepositoryImpl
+import com.windnah.core.domain.repository.AuthRepository
 import com.windnah.core.domain.repository.FavoriteRepository
 import com.windnah.core.domain.repository.FactRepository
 import com.windnah.core.domain.repository.RecentlyViewedRepository
@@ -34,6 +36,12 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class DataModule {
+
+    @Binds
+    @Singleton
+    abstract fun bindAuthRepository(
+        impl: FirebaseAuthRepository,
+    ): AuthRepository
 
     @Binds
     @Singleton

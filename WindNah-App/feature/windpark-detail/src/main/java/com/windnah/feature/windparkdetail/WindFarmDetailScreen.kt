@@ -70,6 +70,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.windnah.core.designsystem.components.TransparencyInfoUiModel
+import com.windnah.core.designsystem.components.WindNahTransparencyBottomSheet
 import com.windnah.core.model.EnergyMetrics
 import com.windnah.core.model.WeatherData
 import com.windnah.core.model.WindFarm
@@ -94,6 +96,8 @@ fun WindFarmDetailScreen(
             detail = state.detail,
             metricVisibility = state.metricVisibility,
             isFavorite = state.isFavorite,
+            selectedTransparencyInfo = state.selectedTransparencyInfo,
+            onEvent = viewModel::onEvent,
             onFavoriteClick = viewModel::toggleFavorite,
             onNavigateBack = onNavigateBack,
         )
@@ -125,6 +129,8 @@ private fun WindFarmDetailContent(
     detail: WindFarmDetail,
     metricVisibility: MetricVisibilityPreferences,
     isFavorite: Boolean,
+    selectedTransparencyInfo: TransparencyInfoUiModel?,
+    onEvent: (WindFarmDetailUiEvent) -> Unit,
     onFavoriteClick: () -> Unit,
     onNavigateBack: () -> Unit,
 ) {
@@ -179,12 +185,25 @@ private fun WindFarmDetailContent(
                     metrics = detail.energyMetrics,
                     weather = detail.weather,
                     metricVisibility = metricVisibility,
+                    onInfoClick = { metric ->
+                        onEvent(WindFarmDetailUiEvent.TransparencyInfoClicked(metric))
+                    },
                 )
                 1 -> WindraederDetailsTab(
                     turbines = detail.turbines,
+                    onSizeComparisonInfoClick = {
+                        onEvent(WindFarmDetailUiEvent.TransparencyInfoClicked(WindFarmDetailMetric.SizeComparison))
+                    },
                 )
             }
         }
+    }
+
+    selectedTransparencyInfo?.let { info ->
+        WindNahTransparencyBottomSheet(
+            info = info,
+            onDismiss = { onEvent(WindFarmDetailUiEvent.TransparencyInfoDismissed) },
+        )
     }
 }
 
@@ -331,6 +350,7 @@ private fun UebersichtTab(
     metrics: EnergyMetrics,
     weather: WeatherData?,
     metricVisibility: MetricVisibilityPreferences,
+    onInfoClick: (WindFarmDetailMetric) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -341,21 +361,39 @@ private fun UebersichtTab(
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         if (metricVisibility.showLiveOutput) {
-            OutputCard(windFarm = windFarm, metrics = metrics)
+            OutputCard(
+                windFarm = windFarm,
+                metrics = metrics,
+                onInfoClick = { onInfoClick(WindFarmDetailMetric.CurrentOutput) },
+            )
         }
-        WindstaerkeCard(weather = weather)
+        WindstaerkeCard(
+            weather = weather,
+            onInfoClick = { onInfoClick(WindFarmDetailMetric.WindSpeed) },
+        )
         MetricsGrid(
             metrics = metrics,
             metricVisibility = metricVisibility,
+            onInfoClick = onInfoClick,
         )
-        KommunaleEinnahmenCard(windFarm = windFarm, metrics = metrics)
-        NoiseEstimateCard(metrics = metrics)
-        TransparencySummaryCard()
+        KommunaleEinnahmenCard(
+            windFarm = windFarm,
+            metrics = metrics,
+            onInfoClick = { onInfoClick(WindFarmDetailMetric.MunicipalRevenue) },
+        )
+        NoiseEstimateCard(
+            metrics = metrics,
+            onInfoClick = { onInfoClick(WindFarmDetailMetric.NoiseEstimate) },
+        )
     }
 }
 
 @Composable
-private fun OutputCard(windFarm: WindFarm, metrics: EnergyMetrics) {
+private fun OutputCard(
+    windFarm: WindFarm,
+    metrics: EnergyMetrics,
+    onInfoClick: () -> Unit,
+) {
     val ratio = if (windFarm.totalCapacityKw > 0.0) {
         (metrics.estimatedCurrentOutputKw / windFarm.totalCapacityKw).toFloat().coerceIn(0f, 1f)
     } else {
@@ -384,11 +422,10 @@ private fun OutputCard(windFarm: WindFarm, metrics: EnergyMetrics) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 StatusChip(status = windFarm.status)
-                Icon(
-                    imageVector = Icons.Outlined.Info,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
+                MetricInfoButton(
+                    contentDescription = "Transparenz zur aktuellen Leistung anzeigen",
                     tint = Color(0xFF73796E),
+                    onClick = onInfoClick,
                 )
             }
 
@@ -437,7 +474,10 @@ private fun OutputCard(windFarm: WindFarm, metrics: EnergyMetrics) {
 }
 
 @Composable
-private fun WindstaerkeCard(weather: WeatherData?) {
+private fun WindstaerkeCard(
+    weather: WeatherData?,
+    onInfoClick: () -> Unit,
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -468,11 +508,10 @@ private fun WindstaerkeCard(weather: WeatherData?) {
                         color = Color(0xFF386569),
                     )
                 }
-                Icon(
-                    imageVector = Icons.Outlined.Info,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
+                MetricInfoButton(
+                    contentDescription = "Transparenz zur Windgeschwindigkeit anzeigen",
                     tint = Color(0xFF386569),
+                    onClick = onInfoClick,
                 )
             }
 
@@ -517,10 +556,12 @@ private fun WindstaerkeCard(weather: WeatherData?) {
 private fun MetricsGrid(
     metrics: EnergyMetrics,
     metricVisibility: MetricVisibilityPreferences,
+    onInfoClick: (WindFarmDetailMetric) -> Unit,
 ) {
     val metricCards = buildList {
         add(
             MetricCardData(
+                metric = WindFarmDetailMetric.AnnualProduction,
                 icon = Icons.Outlined.Bolt,
                 label = "Stromproduktion/\nJahr",
                 value = "${formatGwh(metrics.estimatedAnnualProductionKwh)} GWh",
@@ -530,6 +571,7 @@ private fun MetricsGrid(
         if (metricVisibility.showHouseholds) {
             add(
                 MetricCardData(
+                    metric = WindFarmDetailMetric.Households,
                     icon = Icons.Outlined.Home,
                     label = "Haushalte\nversorgt",
                     value = formatNumber(metrics.householdsSupplied),
@@ -540,6 +582,7 @@ private fun MetricsGrid(
         if (metricVisibility.showCo2Savings) {
             add(
                 MetricCardData(
+                    metric = WindFarmDetailMetric.Co2Savings,
                     icon = Icons.Outlined.Eco,
                     label = "CO2 gespart",
                     value = "${formatNumber(metrics.co2SavingsTonnesPerYear.roundToInt())} t",
@@ -549,6 +592,7 @@ private fun MetricsGrid(
         }
         add(
             MetricCardData(
+                metric = WindFarmDetailMetric.LocalEnergyContribution,
                 icon = Icons.Outlined.BarChart,
                 label = "Lokaler Anteil",
                 value = metrics.localEnergyContributionPercent
@@ -569,6 +613,7 @@ private fun MetricsGrid(
                         label = card.label,
                         value = card.value,
                         subtext = card.subtext,
+                        onInfoClick = { onInfoClick(card.metric) },
                     )
                 }
                 if (rowCards.size == 1) {
@@ -580,6 +625,7 @@ private fun MetricsGrid(
 }
 
 private data class MetricCardData(
+    val metric: WindFarmDetailMetric,
     val icon: ImageVector,
     val label: String,
     val value: String,
@@ -593,6 +639,7 @@ private fun MetricCard(
     label: String,
     value: String,
     subtext: String,
+    onInfoClick: () -> Unit,
 ) {
     Card(
         modifier = modifier,
@@ -624,9 +671,15 @@ private fun MetricCard(
                 }
                 Text(
                     text = label,
+                    modifier = Modifier.weight(1f),
                     fontSize = 12.sp,
                     color = Color(0xFF73796E),
                     lineHeight = 16.sp,
+                )
+                MetricInfoButton(
+                    contentDescription = "Transparenz zu ${label.replace("\n", " ")} anzeigen",
+                    tint = Color(0xFF73796E),
+                    onClick = onInfoClick,
                 )
             }
             Text(
@@ -646,7 +699,11 @@ private fun MetricCard(
 }
 
 @Composable
-private fun KommunaleEinnahmenCard(windFarm: WindFarm, metrics: EnergyMetrics) {
+private fun KommunaleEinnahmenCard(
+    windFarm: WindFarm,
+    metrics: EnergyMetrics,
+    onInfoClick: () -> Unit,
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -662,7 +719,7 @@ private fun KommunaleEinnahmenCard(windFarm: WindFarm, metrics: EnergyMetrics) {
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Apartment,
@@ -677,11 +734,10 @@ private fun KommunaleEinnahmenCard(windFarm: WindFarm, metrics: EnergyMetrics) {
                         fontWeight = FontWeight.Medium,
                     )
                 }
-                Icon(
-                    imageVector = Icons.Outlined.Info,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
+                MetricInfoButton(
+                    contentDescription = "Transparenz zu kommunalen Einnahmen anzeigen",
                     tint = Color(0xFF53634E),
+                    onClick = onInfoClick,
                 )
             }
             Spacer(Modifier.height(10.dp))
@@ -706,7 +762,10 @@ private fun KommunaleEinnahmenCard(windFarm: WindFarm, metrics: EnergyMetrics) {
 }
 
 @Composable
-private fun NoiseEstimateCard(metrics: EnergyMetrics) {
+private fun NoiseEstimateCard(
+    metrics: EnergyMetrics,
+    onInfoClick: () -> Unit,
+) {
     var selectedDistanceIndex by remember { mutableIntStateOf(DEFAULT_NOISE_DISTANCE_INDEX) }
     val selectedDistanceM = noiseSimulationDistancesM[selectedDistanceIndex]
     val estimatedNoiseDbA = metrics.estimatedNoiseLevelDbA?.let {
@@ -754,11 +813,10 @@ private fun NoiseEstimateCard(metrics: EnergyMetrics) {
                         color = Color(0xFF73796E),
                     )
                 }
-                Icon(
-                    imageVector = Icons.Outlined.Info,
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
+                MetricInfoButton(
+                    contentDescription = "Transparenz zur Laermschaetzung anzeigen",
                     tint = Color(0xFF53634E),
+                    onClick = onInfoClick,
                 )
             }
 
@@ -882,6 +940,25 @@ private fun TransparencyRow(
 }
 
 @Composable
+private fun MetricInfoButton(
+    contentDescription: String,
+    tint: Color,
+    onClick: () -> Unit,
+) {
+    IconButton(
+        onClick = onClick,
+        modifier = Modifier.size(32.dp),
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.Info,
+            contentDescription = contentDescription,
+            modifier = Modifier.size(20.dp),
+            tint = tint,
+        )
+    }
+}
+
+@Composable
 private fun StatusChip(status: WindFarmStatus) {
     val (bg, fg, label) = when (status) {
         WindFarmStatus.IN_BETRIEB -> Triple(Color(0xFFC0EFB0), Color(0xFF3F6836), "In Betrieb")
@@ -912,7 +989,10 @@ private data class HeightMeasurement(
 )
 
 @Composable
-private fun GroessenvergleichCard(turbines: List<WindTurbine>) {
+private fun GroessenvergleichCard(
+    turbines: List<WindTurbine>,
+    onInfoClick: () -> Unit,
+) {
     val windFarmHeight = remember(turbines) { calculateAverageTurbineComparisonHeight(turbines) }
     val items = listOf(
         HeightComparisonItem(
@@ -964,6 +1044,12 @@ private fun GroessenvergleichCard(turbines: List<WindTurbine>) {
                     color = Color(0xFF5B6654),
                 )
             }
+
+            MetricInfoButton(
+                contentDescription = "Transparenz zum Groessenvergleich anzeigen",
+                tint = Color(0xFF5B6654),
+                onClick = onInfoClick,
+            )
 
             BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
                 val axisWidth = 46.dp
@@ -1203,6 +1289,7 @@ private fun GroessenvergleichCardPreview() {
         ) {
             GroessenvergleichCard(
                 turbines = previewComparisonTurbines,
+                onInfoClick = {},
             )
         }
     }
@@ -1236,7 +1323,10 @@ private val previewComparisonTurbines = listOf(
 )
 
 @Composable
-private fun WindraederDetailsTab(turbines: List<WindTurbine>) {
+private fun WindraederDetailsTab(
+    turbines: List<WindTurbine>,
+    onSizeComparisonInfoClick: () -> Unit,
+) {
     if (turbines.isEmpty()) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -1277,7 +1367,10 @@ private fun WindraederDetailsTab(turbines: List<WindTurbine>) {
             }
         }
         item {
-            GroessenvergleichCard(turbines = turbines)
+            GroessenvergleichCard(
+                turbines = turbines,
+                onInfoClick = onSizeComparisonInfoClick,
+            )
         }
     }
 }
@@ -1359,12 +1452,12 @@ private fun TurbineCard(
                 }
 
                 Image(
-                    painter = painterResource(R.drawable.windrad_silhouette),
+                    painter = painterResource(R.drawable.windrad_carousel),
                     contentDescription = null,
                     contentScale = ContentScale.Fit,
                     modifier = Modifier
                         .padding(start = 8.dp, top = 4.dp)
-                        .size(width = 70.dp, height = 120.dp),
+                        .size(width = 88.dp, height = 132.dp),
                     alignment = Alignment.TopCenter,
                 )
             }

@@ -7,8 +7,10 @@ import com.windnah.core.domain.repository.FavoriteRepository
 import com.windnah.core.domain.repository.RecentlyViewedRepository
 import com.windnah.core.domain.repository.UserPreferencesRepository
 import com.windnah.core.domain.usecase.GetWindFarmDetailUseCase
+import com.windnah.core.designsystem.components.TransparencyInfoUiModel
 import com.windnah.core.model.WindFarmDetail
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -22,8 +24,14 @@ sealed interface WindFarmDetailUiState {
         val detail: WindFarmDetail,
         val metricVisibility: MetricVisibilityPreferences,
         val isFavorite: Boolean,
+        val selectedTransparencyInfo: TransparencyInfoUiModel? = null,
     ) : WindFarmDetailUiState
     data object NotFound : WindFarmDetailUiState
+}
+
+sealed interface WindFarmDetailUiEvent {
+    data class TransparencyInfoClicked(val metric: WindFarmDetailMetric) : WindFarmDetailUiEvent
+    data object TransparencyInfoDismissed : WindFarmDetailUiEvent
 }
 
 data class MetricVisibilityPreferences(
@@ -42,6 +50,7 @@ class WindFarmDetailViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val windFarmId: String = checkNotNull(savedStateHandle["windFarmId"])
+    private val selectedTransparencyMetric = MutableStateFlow<WindFarmDetailMetric?>(null)
 
     init {
         viewModelScope.launch {
@@ -67,12 +76,14 @@ class WindFarmDetailViewModel @Inject constructor(
             getWindFarmDetail(windFarmId),
             metricVisibility,
             favoriteRepository.observeIsFavorite(windFarmId),
-        ) { detail, metricVisibility, isFavorite ->
+            selectedTransparencyMetric,
+        ) { detail, metricVisibility, isFavorite, selectedMetric ->
             if (detail == null) WindFarmDetailUiState.NotFound
             else WindFarmDetailUiState.Success(
                 detail = detail,
                 metricVisibility = metricVisibility,
                 isFavorite = isFavorite,
+                selectedTransparencyInfo = selectedMetric?.toTransparencyInfoUiModel(detail),
             )
         }
             .stateIn(
@@ -80,6 +91,18 @@ class WindFarmDetailViewModel @Inject constructor(
                 started = SharingStarted.WhileSubscribed(5_000),
                 initialValue = WindFarmDetailUiState.Loading,
             )
+
+    fun onEvent(event: WindFarmDetailUiEvent) {
+        when (event) {
+            is WindFarmDetailUiEvent.TransparencyInfoClicked -> {
+                selectedTransparencyMetric.value = event.metric
+            }
+
+            WindFarmDetailUiEvent.TransparencyInfoDismissed -> {
+                selectedTransparencyMetric.value = null
+            }
+        }
+    }
 
     fun toggleFavorite() {
         viewModelScope.launch {

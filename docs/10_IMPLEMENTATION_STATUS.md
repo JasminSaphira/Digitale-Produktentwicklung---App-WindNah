@@ -1,7 +1,7 @@
 # WindNah – Implementation Status
 
-Version: 1.2
-Last Updated: 2026-06-27
+Version: 1.3
+Last Updated: 2026-06-28
 
 ---
 
@@ -104,8 +104,10 @@ Profil-Update 2026-06-26:
 - `ProfileViewModel` liest/schreibt Dark Mode, Standortnutzung und Metrik-Sichtbarkeit via `UserPreferencesRepository`
 
 ### feature:auth
-- `LoginScreen` — E-Mail + Passwort + Google-Button (Stub/M5) + Link zu Registrierung
-- `RegistrationScreen` — Name + E-Mail + Passwort
+- `LoginScreen` — E-Mail + Passwort + Google-Button (weiterhin Stub) + Link zu Registrierung
+- `RegistrationScreen` — Name + E-Mail + Passwort + Passwort-Bestaetigung + Datenschutz-Zustimmung
+- MVVM-Auth-Flow: `LoginViewModel` und `RegistrationViewModel` verwalten Eingaben, Inline-Validierung, Loading-State und freundliche Fehlertexte per `StateFlow`
+- E-Mail/Passwort-Authentifizierung ist ueber `AuthRepository` und `FirebaseAuthRepository` an Firebase Authentication angebunden
 - Build-Config: Hilt, KSP, `hilt-navigation-compose`, `lifecycle-viewmodel-compose`, `material-icons-extended` ergänzt
 
 ## Definition of Done ✅
@@ -392,11 +394,12 @@ Status Update 2026-06-27
 |-------|--------|
 | Placeholder-Screens: MyTurbines | ✅ Umgesetzt in M7 (Favoriten + Zuletzt angesehen) |
 | Discover lädt echte MaStR-Daten via SOAP | ✅ M8: Room-Cache-First; offline werden gecachte Daten gezeigt, Mock-Fallback entfernt |
-| Google Sign-In / Firebase Auth nicht integriert | Auth-Screens sind UI-Stubs → M7 |
+| Firebase Auth E-Mail/Passwort | ✅ Implementiert und mit `google-services.json` lokal konfiguriert; Build fuehrt `processDebugGoogleServices` aus |
+| Google Sign-In | Offen; Button ist noch Stub, Credential-Manager/OAuth-Flow nicht implementiert |
 | Windpark-Thumbnail im Bottom Sheet: Gradient-Placeholder | Echtes Foto fehlt (kein Asset) |
 | Turbinenkarten: LazyRow statt M3-Carousel | Carousel-Peek-Ansicht → M6 |
-| Profil: Benutzerprofil-Karte mit Avatar/Stats fehlt | Erfordert Auth → M7 |
-| Login ist Bottom Sheet statt vollständiger Screen | Vollständiges Login-Formular → M7 |
+| Profil: echte Benutzer-/Sessiondaten | ✅ Profil beobachtet `AuthRepository.currentUser` und bietet Logout; Favoriten-Sync bleibt lokal |
+| Login/Registrierung | ✅ Vollstaendige Screens mit Inline-Validierung und Firebase E-Mail/Passwort |
 | localEnergyContributionPercent + municipalRevenueEurPerYear | Werden in M6 berechnet; derzeit null → UI zeigt „–" |
 | Dark Mode | ⛔ Bewusst weggelassen — kein Figma-Dark-Design vorhanden; in M9 vollständig aus der App entfernt. App ist fest Light-Theme. |
 
@@ -408,51 +411,38 @@ Note 2026-06-26: Die Profilkarte mit Avatar/Stats ist UI-seitig umgesetzt. Offen
 
 ---
 
-# Geplant (nicht umgesetzt): Authentifizierung – E-Mail + Google Sign-In
+# Milestone 10 – Authentication E-Mail/Passwort ✅ DONE
 
-Status: **NUR GEPLANT, kein Code umgesetzt** (Stand 2026-06-27)
+Status: **E-Mail/Passwort implementiert und lokal Firebase-konfiguriert** (Stand 2026-06-28)
 
-Aktuell sind `LoginScreen` und `RegistrationScreen` reine UI-Stubs (E-Mail-/Passwort-Felder,
-Google-Button, Navigation). Die `onClick`-Handler enthalten nur `TODO: Firebase Auth`. Es gibt
-keine Firebase-Anbindung, kein `AuthRepository`, kein `User`-Modell und keine Session-Persistenz.
+## Implemented
 
-## Kosten
-- **Firebase Authentication (E-Mail/Passwort + Google) ist im Spark-Plan kostenlos und unbegrenzt** —
-  keine Kreditkarte nötig, keine MAU-Grenze für diesen Anwendungsfall.
-- **Achtung:** NICHT auf „Identity Platform" upgraden (anderes Preismodell, erst 50k MAU frei).
-- SMS-/Phone-Auth würde pro SMS kosten → wird hier **nicht** verwendet.
-- Cloud-Sync von Favoriten (Firestore) wäre separat kostenpflichtig ab Quota → **nicht geplant**,
-  Favoriten bleiben lokal in Room.
+- Firebase Authentication ist per `google-services`-Plugin, Firebase BoM und `firebase-auth` eingebunden.
+- `google-services.json` liegt im App-Modul; `:app:processDebugGoogleServices` laeuft im Debug-Build.
+- `AuthUser` liegt in `core:model`; `AuthRepository`, `AuthResult` und `AuthErrorReason` liegen in `core:domain`.
+- `FirebaseAuthRepository` liegt in `core:data` und kapselt Firebase-Code fuer Login, Registrierung, `currentUser`-Flow und Logout.
+- `LoginViewModel` und `RegistrationViewModel` rufen bei gueltigen Eingaben das Repository auf, setzen Loading-/Success-State und mappen Auth-Fehler auf nutzerfreundliche deutsche Texte.
+- `LoginScreen` und `RegistrationScreen` bleiben reine UI-Schichten: Sie rendern State, nutzen Inline-Validierung und senden Events.
+- `ProfileViewModel` beobachtet den echten Auth-State; das Profil zeigt angemeldete E-Mail/Name und bietet Logout.
+- Navigation fuehrt nach erfolgreichem Login/Register zurueck Richtung Profil.
 
-## Teil A – Externes Setup (manuell, nur durch den/die Entwickler:in)
-1. Firebase-Projekt anlegen (~10 Min)
-2. Android-App registrieren mit Package `com.example.windnah`, `google-services.json` nach `app/` legen (~5 Min)
-3. Provider „E-Mail/Passwort" aktivieren (~2 Min)
-4. Provider „Google" aktivieren **+ SHA-1-Fingerprint des Debug-Keystores** in Firebase hinterlegen
-   (~15–20 Min, häufigste Fehlerquelle — ohne korrekten SHA-1 schlägt Google-Login still fehl)
-5. OAuth-Web-Client-ID aus Firebase kopieren (für Credential Manager)
+## Verification
 
-→ ~30–40 Min, SHA-1 ist der fummeligste Teil.
+- `:app:compileDebugKotlin` erfolgreich mit vorhandener Firebase-Konfiguration.
+- Build-Log bestaetigt `:app:processDebugGoogleServices`.
+- Manuell noch zu pruefen: Registrierung, Login, falsches Passwort, nicht existierendes Konto, Netzwerkfehler, Logout und Session nach App-Neustart.
 
-## Teil B – Code (in der App)
-1. **Gradle**: `google-services`-Plugin, Firebase-BoM, `firebase-auth`, Credential-Manager-Deps
-   (~30 Zeilen über 3 Dateien)
-2. **core:model**: `User`-Modell · **core:domain**: `AuthRepository`-Interface + Result-Typen
-3. **core:data**: `FirebaseAuthRepository` — E-Mail-Login/Register, Google-Credential-Flow,
-   `currentUser`-Flow, Logout (der Google-Credential-Manager-Flow ist der aufwändigste Code-Teil)
-4. **feature:auth**: `LoginViewModel` + `RegisterViewModel`, bestehende Screens verdrahten
-   (Loading-/Fehler-States, deutsche Fehlermeldungen)
-5. **Session-Gating**: App-Start liest Auth-Zustand; Profil zeigt echten User + Logout;
-   Favoriten optional an User koppeln (berührt `AppViewModel`, Profil)
-6. **Verifikation**: Tests + Emulator (Login, Register, Google, Logout, Fehlerfälle)
+## Costs / Constraints
 
-## Aufwandseinschätzung
-- **E-Mail/Passwort allein**: moderat (halb so viel Code, kein SHA-1-Setup).
-- **+ Google Sign-In**: verdoppelt grob den Aufwand und bringt das fehleranfällige externe Setup mit.
-- **Gesamt realistisch ~1–2 fokussierte Sessions.** Größtes Risiko liegt nicht im Code, sondern
-  im Firebase-/Google-Setup (SHA-1, OAuth-Client).
-- **Empfohlene Reihenfolge**: erst E-Mail/Passwort lauffähig machen (in sich geschlossen),
-  Google danach als separater Aufsatz — so blockiert das SHA-1-Setup nicht den ganzen Rest.
+- Firebase Authentication mit E-Mail/Passwort ist im Spark-Plan fuer diesen Anwendungsfall kostenlos.
+- SMS-/Phone-Auth wird nicht verwendet.
+- Cloud-Sync von Favoriten ueber Firestore ist nicht Teil dieses Meilensteins; Favoriten bleiben lokal in Room.
+
+## Offen
+
+- Google Sign-In ist noch nicht implementiert; der Google-Button ist weiterhin ein Stub.
+- Fuer Google Login waeren noch Google Provider, Debug-SHA-1, OAuth-Web-Client-ID und Credential-Manager-Flow noetig.
+- Optional spaeter: Firestore-Sync fuer Favoriten/Profileinstellungen, falls geraeteuebergreifende Synchronisation gewuenscht ist.
 
 ---
 
@@ -471,6 +461,9 @@ keine Firebase-Anbindung, kein `AuthRepository`, kein `User`-Modell und keine Se
 | ProfileViewModel | `feature/profile/src/main/java/com/windnah/feature/profile/ProfileViewModel.kt` |
 | LoginScreen | `feature/auth/src/main/java/com/windnah/feature/auth/LoginScreen.kt` |
 | RegistrationScreen | `feature/auth/src/main/java/com/windnah/feature/auth/RegistrationScreen.kt` |
+| AuthRepository | `core/domain/src/main/java/com/windnah/core/domain/repository/AuthRepository.kt` |
+| AuthUser | `core/model/src/main/java/com/windnah/core/model/AuthUser.kt` |
+| FirebaseAuthRepository | `core/data/src/main/java/com/windnah/core/data/repository/FirebaseAuthRepository.kt` |
 | DataModule (Hilt) | `core/data/src/main/java/com/windnah/core/data/di/DataModule.kt` |
 | UserPrefsRepo Interface | `core/domain/src/main/java/com/windnah/core/domain/repository/UserPreferencesRepository.kt` |
 | UserPrefsRepo Impl | `core/data/src/main/java/com/windnah/core/data/repository/UserPreferencesRepositoryImpl.kt` |

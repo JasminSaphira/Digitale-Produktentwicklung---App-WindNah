@@ -48,6 +48,14 @@ fun WindNahNavGraph(
             }
         }
 
+        fun navigateBackToProfile() {
+            if (!navController.popBackStack(ROUTE_PROFILE, inclusive = false)) {
+                navController.navigate(ROUTE_PROFILE) {
+                    launchSingleTop = true
+                }
+            }
+        }
+
         composable(ROUTE_ONBOARDING) {
             OnboardingScreen(
                 onOnboardingComplete = {
@@ -98,11 +106,19 @@ fun WindNahNavGraph(
             LoginScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToRegister = { navController.navigate(ROUTE_REGISTER) },
+                onAuthSuccess = { navigateBackToProfile() },
             )
         }
         composable(ROUTE_REGISTER) {
             RegistrationScreen(
                 onNavigateBack = { navController.popBackStack() },
+                onNavigateToLogin = {
+                    navController.navigate(ROUTE_LOGIN) {
+                        popUpTo(ROUTE_REGISTER) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                },
+                onAuthSuccess = { navigateBackToProfile() },
             )
         }
     }

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -27,28 +28,51 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
     modifier: Modifier = Modifier,
     onNavigateBack: () -> Unit = {},
     onNavigateToRegister: () -> Unit = {},
+    onAuthSuccess: () -> Unit = onNavigateBack,
+    viewModel: LoginViewModel = hiltViewModel(),
 ) {
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) }
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
+    LaunchedEffect(uiState.isAuthenticated) {
+        if (uiState.isAuthenticated) {
+            onAuthSuccess()
+        }
+    }
+
+    LoginScreenContent(
+        uiState = uiState,
+        onEvent = viewModel::onEvent,
+        onNavigateBack = onNavigateBack,
+        onNavigateToRegister = onNavigateToRegister,
+        modifier = modifier,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LoginScreenContent(
+    uiState: LoginUiState,
+    onEvent: (LoginUiEvent) -> Unit,
+    onNavigateBack: () -> Unit,
+    onNavigateToRegister: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Scaffold(
         topBar = {
             TopAppBar(
@@ -57,13 +81,14 @@ fun LoginScreen(
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = "Zurück",
+                            contentDescription = "Zur\u00fcck",
                         )
                     }
                 },
             )
         },
         modifier = modifier,
+        containerColor = MaterialTheme.colorScheme.background,
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -75,52 +100,76 @@ fun LoginScreen(
         ) {
             Spacer(modifier = Modifier.height(8.dp))
 
+            AuthErrorText(message = uiState.authErrorMessage)
+
             OutlinedTextField(
-                value = email,
-                onValueChange = { email = it },
+                value = uiState.email,
+                onValueChange = { onEvent(LoginUiEvent.EmailChanged(it)) },
+                enabled = !uiState.isLoading,
                 label = { Text("E-Mail-Adresse") },
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Email,
                     imeAction = ImeAction.Next,
                 ),
+                isError = uiState.emailError != null,
+                supportingText = uiState.emailError?.let { message ->
+                    { Text(message) }
+                },
                 singleLine = true,
+                shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.fillMaxWidth(),
             )
 
             OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
+                value = uiState.password,
+                onValueChange = { onEvent(LoginUiEvent.PasswordChanged(it)) },
+                enabled = !uiState.isLoading,
                 label = { Text("Passwort") },
-                visualTransformation = if (passwordVisible) VisualTransformation.None
-                    else PasswordVisualTransformation(),
+                visualTransformation = if (uiState.isPasswordVisible) {
+                    VisualTransformation.None
+                } else {
+                    PasswordVisualTransformation()
+                },
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Password,
                     imeAction = ImeAction.Done,
                 ),
                 trailingIcon = {
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                    IconButton(onClick = { onEvent(LoginUiEvent.TogglePasswordVisibilityClicked) }) {
                         Icon(
-                            if (passwordVisible) Icons.Outlined.VisibilityOff
+                            if (uiState.isPasswordVisible) Icons.Outlined.VisibilityOff
                             else Icons.Outlined.Visibility,
-                            contentDescription = if (passwordVisible) "Passwort ausblenden"
-                                else "Passwort anzeigen",
+                            contentDescription = if (uiState.isPasswordVisible) {
+                                "Passwort ausblenden"
+                            } else {
+                                "Passwort anzeigen"
+                            },
                         )
                     }
                 },
+                isError = uiState.passwordError != null,
+                supportingText = uiState.passwordError?.let { message ->
+                    { Text(message) }
+                },
                 singleLine = true,
+                shape = RoundedCornerShape(16.dp),
                 modifier = Modifier.fillMaxWidth(),
             )
 
             Button(
-                onClick = { /* TODO: Firebase Auth – M5 */ },
+                onClick = { onEvent(LoginUiEvent.SubmitClicked) },
+                enabled = !uiState.isLoading,
                 modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
             ) {
-                Text("Anmelden")
+                Text(if (uiState.isLoading) "Anmeldung l\u00e4uft..." else "Anmelden")
             }
 
             OutlinedButton(
-                onClick = { /* TODO: Google Sign-In – M5 */ },
+                onClick = { },
+                enabled = !uiState.isLoading,
                 modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
             ) {
                 Icon(Icons.Outlined.AccountCircle, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
@@ -137,5 +186,20 @@ fun LoginScreen(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun AuthErrorText(
+    message: String?,
+    modifier: Modifier = Modifier,
+) {
+    if (message != null) {
+        Text(
+            text = message,
+            color = MaterialTheme.colorScheme.error,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = modifier.fillMaxWidth(),
+        )
     }
 }

@@ -82,6 +82,7 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.windnah.core.designsystem.components.WindNahScreenHeader
+import com.windnah.core.model.AuthUser
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,6 +94,7 @@ fun ProfileScreen(
 ) {
     val context = LocalContext.current
     val isLocationUsageEnabled by viewModel.isLocationUsageEnabled.collectAsStateWithLifecycle()
+    val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
     val showLiveOutputMetric by viewModel.showLiveOutputMetric.collectAsStateWithLifecycle()
     val showCo2SavingsMetric by viewModel.showCo2SavingsMetric.collectAsStateWithLifecycle()
     val showHouseholdsMetric by viewModel.showHouseholdsMetric.collectAsStateWithLifecycle()
@@ -148,6 +150,7 @@ fun ProfileScreen(
         ) {
             item {
                 ProfileHeroCard(
+                    currentUser = currentUser,
                     onEditClick = { showLoginSheet = true },
                 )
             }
@@ -280,7 +283,13 @@ fun ProfileScreen(
 
             item {
                 OutlinedButton(
-                    onClick = { showLoginSheet = true },
+                    onClick = {
+                        if (currentUser == null) {
+                            showLoginSheet = true
+                        } else {
+                            viewModel.signOut()
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(50.dp),
@@ -290,9 +299,13 @@ fun ProfileScreen(
                     border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
                     shape = RoundedCornerShape(36.dp),
                 ) {
-                    Icon(Icons.AutoMirrored.Outlined.Logout, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Icon(
+                        if (currentUser == null) Icons.Outlined.AccountCircle else Icons.AutoMirrored.Outlined.Logout,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                    )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Abmelden")
+                    Text(if (currentUser == null) "Anmelden" else "Abmelden")
                 }
             }
 
@@ -322,8 +335,16 @@ fun ProfileScreen(
 
 @Composable
 private fun ProfileHeroCard(
+    currentUser: AuthUser?,
     onEditClick: () -> Unit,
 ) {
+    val displayName = currentUser?.displayName
+        ?.takeIf { it.isNotBlank() }
+        ?: currentUser?.email
+        ?: "Gast"
+    val email = currentUser?.email ?: "Nicht angemeldet"
+    val initial = displayName.firstOrNull()?.uppercaseChar()?.toString() ?: "G"
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -345,7 +366,7 @@ private fun ProfileHeroCard(
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = "M",
+                        text = initial,
                         style = MaterialTheme.typography.headlineLarge,
                         color = MaterialTheme.colorScheme.onPrimary,
                         fontWeight = FontWeight.Bold,
@@ -354,13 +375,13 @@ private fun ProfileHeroCard(
                 Spacer(modifier = Modifier.width(16.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Max Mustermann",
+                        text = displayName,
                         style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
-                        text = "max.mustermann@email.de",
+                        text = email,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

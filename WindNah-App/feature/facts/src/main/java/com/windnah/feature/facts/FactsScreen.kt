@@ -1,13 +1,10 @@
 package com.windnah.feature.facts
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,21 +12,19 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -37,9 +32,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.windnah.core.designsystem.components.FactCard
 import com.windnah.core.designsystem.components.WindNahScreenHeader
 import com.windnah.core.model.FactCategory
-
-private val FactsPrimary = Color(0xFF3F6836)
-private val FactsTextSecondary = Color(0xFF49454F)
 
 @Composable
 fun FactsScreen(
@@ -67,15 +59,21 @@ private fun FactsScreenContent(
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
-        modifier = modifier
-            .fillMaxSize(),
+        modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            WindNahScreenHeader(
-                title = "Fakten",
-                subtitle = "Mythen klären, Wissen vertiefen",
-                onBackClick = onNavigateToMap,
-            )
+            Column {
+                WindNahScreenHeader(
+                    title = "Fakten",
+                    subtitle = "Mythen kl\u00e4ren, Wissen vertiefen",
+                    onBackClick = onNavigateToMap,
+                )
+                FactsCategoryTabs(
+                    selectedCategory = uiState.selectedCategory,
+                    onCategorySelected = onCategorySelected,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         },
     ) { innerPadding ->
         LazyColumn(
@@ -83,20 +81,10 @@ private fun FactsScreenContent(
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.background),
             contentPadding = PaddingValues(
-                top = innerPadding.calculateTopPadding() + 24.dp,
+                top = innerPadding.calculateTopPadding() + 12.dp,
                 bottom = innerPadding.calculateBottomPadding() + 32.dp,
             ),
         ) {
-            item {
-                FactsCategoryTabs(
-                    selectedCategory = uiState.selectedCategory,
-                    onCategorySelected = onCategorySelected,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                )
-            }
-
             when {
                 uiState.isLoading -> {
                     item {
@@ -155,55 +143,38 @@ private fun FactsCategoryTabs(
     onCategorySelected: (FactCategory?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = modifier
-            .background(Color.White)
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 28.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+    val tabs = listOf(null to "Alle") + FactCategory.values().map { it to it.label }
+    val selectedTabIndex = tabs
+        .indexOfFirst { (category, _) -> category == selectedCategory }
+        .coerceAtLeast(0)
+
+    PrimaryScrollableTabRow(
+        selectedTabIndex = selectedTabIndex,
+        modifier = modifier,
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.primary,
+        edgePadding = 0.dp,
+        divider = {
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        },
     ) {
-        CategoryTab(
-            text = "Alle",
-            selected = selectedCategory == null,
-            onClick = { onCategorySelected(null) },
-        )
-        FactCategory.values().forEach { category ->
-            CategoryTab(
-                text = category.label,
-                selected = category == selectedCategory,
+        tabs.forEachIndexed { index, (category, label) ->
+            val selected = index == selectedTabIndex
+            Tab(
+                selected = selected,
                 onClick = { onCategorySelected(category) },
+                modifier = Modifier.height(48.dp),
+                selectedContentColor = MaterialTheme.colorScheme.primary,
+                unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                text = {
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                    )
+                },
             )
         }
-    }
-}
-
-@Composable
-private fun CategoryTab(
-    text: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val containerColor = if (selected) FactsPrimary else Color.Transparent
-    val contentColor = if (selected) Color.White else FactsTextSecondary
-
-    Surface(
-        modifier = modifier
-            .clip(RoundedCornerShape(999.dp))
-            .clickable(onClick = onClick),
-        color = containerColor,
-        shape = RoundedCornerShape(999.dp),
-    ) {
-        Text(
-            text = text,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            style = MaterialTheme.typography.labelLarge.copy(
-                color = contentColor,
-                fontWeight = FontWeight.SemiBold,
-                lineHeight = 18.sp,
-            ),
-        )
     }
 }
 
@@ -215,7 +186,7 @@ private fun FactsLoadingState(
         modifier = modifier,
         contentAlignment = Alignment.Center,
     ) {
-        CircularProgressIndicator(color = FactsPrimary)
+        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
     }
 }
 
@@ -233,7 +204,7 @@ private fun FactsErrorState(
         Text(
             text = message,
             style = MaterialTheme.typography.bodyMedium.copy(
-                color = FactsTextSecondary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 lineHeight = 20.sp,
             ),
         )
@@ -253,9 +224,9 @@ private fun FactsFooter(
     ) {
         Text(
             text = "Diese App soll Ihnen helfen, eine informierte eigene Meinung zu bilden. " +
-                "Wir streben Neutralität und wissenschaftliche Genauigkeit an.",
+                "Wir streben Neutralit\u00e4t und wissenschaftliche Genauigkeit an.",
             style = MaterialTheme.typography.bodySmall.copy(
-                color = FactsTextSecondary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 lineHeight = 18.sp,
             ),
         )
@@ -263,7 +234,7 @@ private fun FactsFooter(
         Text(
             text = "Umweltbundesamt 2026",
             style = MaterialTheme.typography.labelSmall.copy(
-                color = FactsPrimary,
+                color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Medium,
             ),
         )

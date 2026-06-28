@@ -2,7 +2,9 @@ package com.windnah.feature.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.windnah.core.domain.repository.AuthRepository
 import com.windnah.core.domain.repository.UserPreferencesRepository
+import com.windnah.core.model.AuthUser
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -12,8 +14,16 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
+    private val authRepository: AuthRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
 ) : ViewModel() {
+
+    val currentUser: StateFlow<AuthUser?> = authRepository.currentUser
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = null,
+        )
 
     val isLocationUsageEnabled: StateFlow<Boolean> = userPreferencesRepository.isLocationUsageEnabled
         .stateIn(
@@ -64,6 +74,12 @@ class ProfileViewModel @Inject constructor(
     fun setShowHouseholdsMetric(enabled: Boolean) {
         viewModelScope.launch {
             userPreferencesRepository.setShowHouseholdsMetric(enabled)
+        }
+    }
+
+    fun signOut() {
+        viewModelScope.launch {
+            authRepository.signOut()
         }
     }
 }
