@@ -336,7 +336,7 @@ private fun DiscoverContent(
                     )
                 }
             },
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = Color.White,
             tonalElevation = 8.dp,
         ) {
             SelectedWindFarmSheetContent(

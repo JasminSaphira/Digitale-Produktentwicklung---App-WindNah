@@ -1,5 +1,6 @@
 # Gradle files
 .gradle/
+.gradle-home/
 build/
 bin/
 
@@ -36,3 +37,5 @@ google-services.json
 
 #mcp server
 .vscode/
+
+

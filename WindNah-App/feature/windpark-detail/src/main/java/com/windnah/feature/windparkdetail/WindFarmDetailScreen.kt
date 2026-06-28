@@ -1,8 +1,10 @@
 package com.windnah.feature.windparkdetail
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -14,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
@@ -42,6 +45,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SecondaryTabRow
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -53,12 +57,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -70,7 +77,7 @@ import com.windnah.core.model.WindFarmDetail
 import com.windnah.core.model.WindFarmStatus
 import com.windnah.core.model.WindTurbine
 import com.windnah.core.domain.usecase.WindFarmMetricTransparency
-import com.windnah.feature.windparkdetail.R
+import kotlin.math.log10
 import kotlin.math.roundToInt
 
 @Composable
@@ -166,12 +173,6 @@ private fun WindFarmDetailContent(
                 }
             }
 
-            val avgHubHeightM = detail.turbines
-                .mapNotNull { it.hubHeightM }
-                .takeIf { it.isNotEmpty() }
-                ?.average()
-                ?: 100.0
-
             when (selectedTab) {
                 0 -> UebersichtTab(
                     windFarm = detail.windFarm,
@@ -181,7 +182,6 @@ private fun WindFarmDetailContent(
                 )
                 1 -> WindraederDetailsTab(
                     turbines = detail.turbines,
-                    avgHubHeightM = avgHubHeightM,
                 )
             }
         }
@@ -248,7 +248,7 @@ private fun WindFarmHeader(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .padding(end = 16.dp, top = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onFavoriteClick) {
@@ -425,7 +425,7 @@ private fun OutputCard(windFarm: WindFarm, metrics: EnergyMetrics) {
                         trackColor = Color(0x293F6836),
                     )
                     Text(
-                        text = "${formatDecimalD(windFarm.totalCapacityKw / 1000.0, 1)} MW max.",
+                        text = "${formatDecimal(windFarm.totalCapacityKw / 1000.0, 1)} MW max.",
                         fontSize = 10.sp,
                         color = Color(0xFFC3C8BC),
                         textAlign = TextAlign.End,
@@ -509,46 +509,6 @@ private fun WindstaerkeCard(weather: WeatherData?) {
                     )
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun MetricsGrid(metrics: EnergyMetrics) {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(21.dp)) {
-            MetricCard(
-                modifier = Modifier.weight(1f),
-                icon = Icons.Outlined.Bolt,
-                label = "Stromproduktion/\nJahr",
-                value = "${formatGwh(metrics.estimatedAnnualProductionKwh)} GWh",
-                subtext = "${formatMwh(metrics.estimatedAnnualProductionKwh)} MWh",
-            )
-            MetricCard(
-                modifier = Modifier.weight(1f),
-                icon = Icons.Outlined.Home,
-                label = "Haushalte\nversorgt",
-                value = formatNumber(metrics.householdsSupplied),
-                subtext = "Haushalte/Jahr",
-            )
-        }
-        Row(horizontalArrangement = Arrangement.spacedBy(21.dp)) {
-            MetricCard(
-                modifier = Modifier.weight(1f),
-                icon = Icons.Outlined.Eco,
-                label = "CO₂ gespart",
-                value = "${formatNumber(metrics.co2SavingsTonnesPerYear.roundToInt())} t",
-                subtext = "≈ ${formatNumber((metrics.co2SavingsTonnesPerYear / 4.7).roundToInt())} Pkw, die ein Jahr lang nicht fahren",
-            )
-            MetricCard(
-                modifier = Modifier.weight(1f),
-                icon = Icons.Outlined.BarChart,
-                label = "Lokaler Anteil",
-                value = metrics.localEnergyContributionPercent
-                    ?.let { "${it.roundToInt()} %" }
-                    ?: "–",
-                subtext = "des kommunalen\nVerbrauchs",
-            )
         }
     }
 }
@@ -747,15 +707,23 @@ private fun KommunaleEinnahmenCard(windFarm: WindFarm, metrics: EnergyMetrics) {
 
 @Composable
 private fun NoiseEstimateCard(metrics: EnergyMetrics) {
+    var selectedDistanceIndex by remember { mutableIntStateOf(DEFAULT_NOISE_DISTANCE_INDEX) }
+    val selectedDistanceM = noiseSimulationDistancesM[selectedDistanceIndex]
+    val estimatedNoiseDbA = metrics.estimatedNoiseLevelDbA?.let {
+        estimateNoiseForDistance(referenceNoiseDbA = it, distanceM = selectedDistanceM)
+    }
+    val displayedNoiseDbA = estimatedNoiseDbA?.roundToInt()
+    val comparisonText = estimatedNoiseDbA?.let(::noiseComparisonText)
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(18.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -780,24 +748,72 @@ private fun NoiseEstimateCard(metrics: EnergyMetrics) {
                         )
                     }
                     Text(
-                        text = "Larmschatzung",
+                        text = "Lärmschätzung",
                         fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
                         color = Color(0xFF73796E),
                     )
                 }
-                Text(
-                    text = metrics.estimatedNoiseLevelDbA?.let { "${it.roundToInt()} dB(A)" } ?: "–",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF191D17),
+                Icon(
+                    imageVector = Icons.Outlined.Info,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                    tint = Color(0xFF53634E),
                 )
             }
-            Text(
-                text = "Bildungsorientierte Schätzung auf 500 m Referenzdistanz, nicht amtlich gemessen.",
-                fontSize = 11.sp,
-                color = Color(0xFF73796E),
-                lineHeight = 14.sp,
-            )
+
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = displayedNoiseDbA?.let { "$it dB(A)" } ?: "– dB(A)",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF191D17),
+                    lineHeight = 30.sp,
+                )
+                Text(
+                    text = comparisonText ?: "Wähle eine Entfernung, sobald aktuelle Wetterdaten verfügbar sind.",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFF53634E),
+                    lineHeight = 16.sp,
+                )
+          
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Slider(
+                    value = selectedDistanceIndex.toFloat(),
+                    onValueChange = { value ->
+                        selectedDistanceIndex = value.roundToInt()
+                            .coerceIn(0, noiseSimulationDistancesM.lastIndex)
+                    },
+                    valueRange = 0f..noiseSimulationDistancesM.lastIndex.toFloat(),
+                    steps = noiseSimulationDistancesM.size - 2,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    noiseSimulationDistancesM.forEach { distanceM ->
+                        Text(
+                            text = "$distanceM m",
+                            fontSize = 10.sp,
+                            color = if (distanceM == selectedDistanceM) {
+                                Color(0xFF3F6836)
+                            } else {
+                                Color(0xFF9AA290)
+                            },
+                            fontWeight = if (distanceM == selectedDistanceM) {
+                                FontWeight.SemiBold
+                            } else {
+                                FontWeight.Normal
+                            },
+                        )
+                    }
+                }
+            }
+
             Text(
                 text = WindFarmMetricTransparency.NOISE,
                 fontSize = 10.sp,
@@ -882,22 +898,47 @@ private fun StatusChip(status: WindFarmStatus) {
     }
 }
 
-private data class SilhouetteItem(
-    val labelLine1: String,
-    val labelLine2: String?,
-    val heightM: Double,
+
+private data class HeightComparisonItem(
+    val label: String,
+    val heightM: Double?,
+    val approximate: Boolean,
     val drawableRes: Int,
 )
 
+private data class HeightMeasurement(
+    val heightM: Double,
+    val approximate: Boolean,
+)
+
 @Composable
-private fun GroessenvergleichCard(avgHubHeightM: Double) {
-    val maxHeight = 400.0
-    val chartHeight = 142.dp
+private fun GroessenvergleichCard(turbines: List<WindTurbine>) {
+    val windFarmHeight = remember(turbines) { calculateAverageTurbineComparisonHeight(turbines) }
     val items = listOf(
-        SilhouetteItem("Windrad", "(Ø)", avgHubHeightM, R.drawable.windrad_silhouette),
-        SilhouetteItem("Kölner", "Dom", 157.0, R.drawable.koelner_dom_silhouette),
-        SilhouetteItem("Berliner", "Fernsehturm", 368.0, R.drawable.fernsehturm_silhouette),
-        SilhouetteItem("Dresdner", "Frauenkirche", 91.0, R.drawable.frauenkirche_silhouette),
+        HeightComparisonItem(
+            label = "Windrad",
+            heightM = windFarmHeight?.heightM,
+            approximate = windFarmHeight?.approximate == true,
+            drawableRes = R.drawable.windrad_silhouette,
+        ),
+        HeightComparisonItem(
+            label = "Kölner Dom",
+            heightM = 157.0,
+            approximate = false,
+            drawableRes = R.drawable.koelner_dom_silhouette,
+        ),
+        HeightComparisonItem(
+            label = "Berliner Fernsehturm",
+            heightM = 368.0,
+            approximate = false,
+            drawableRes = R.drawable.fernsehturm_silhouette,
+        ),
+        HeightComparisonItem(
+            label = "Frauenkirche Dresden",
+            heightM = 91.0,
+            approximate = false,
+            drawableRes = R.drawable.frauenkirche_silhouette,
+        ),
     )
 
     Card(
@@ -906,84 +947,114 @@ private fun GroessenvergleichCard(avgHubHeightM: Double) {
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "Größenvergleich",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF191D17),
-            )
-            Text(
-                text = "Höhe",
-                fontSize = 12.sp,
-                color = Color(0xFF3C4B37),
-            )
-            Spacer(modifier = Modifier.height(12.dp))
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = "Größenvergleich",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Color(0xFF191D17),
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = "Höhe",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF5B6654),
+                )
+            }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Bottom,
-            ) {
-                Column(
-                    modifier = Modifier
-                        .width(32.dp)
-                        .height(chartHeight),
-                    verticalArrangement = Arrangement.SpaceBetween,
-                    horizontalAlignment = Alignment.End,
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                val axisWidth = 46.dp
+                val plotHeight = 172.dp
+                val labelBandHeight = 68.dp
+                val itemWidth = 94.dp
+                val itemSpacing = 12.dp
+                val chartHeight = plotHeight + labelBandHeight
+                val chartContentWidth = itemWidth * items.size + itemSpacing * (items.size - 1)
+                val availableWidth = (maxWidth - axisWidth - 10.dp).coerceAtLeast(0.dp)
+                val chartWidth = if (chartContentWidth > availableWidth) chartContentWidth else availableWidth
+                val axisLabels = listOf(400, 300, 200, 100, 0)
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.Top,
                 ) {
-                    listOf("400m", "300m", "200m", "100m", "0").forEach { label ->
-                        Text(
-                            text = label,
-                            fontSize = 9.sp,
-                            color = Color(0xFF3C4B37),
-                            textAlign = TextAlign.End,
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(4.dp))
-
-                Box(modifier = Modifier.weight(1f).height(chartHeight)) {
-                    androidx.compose.foundation.Canvas(modifier = Modifier.fillMaxSize()) {
-                        val linePositions = listOf(0f, 0.25f, 0.5f, 0.75f, 1.0f)
-                        val pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(6f, 4f), 0f)
-                        linePositions.forEach { fraction ->
-                            val y = size.height * fraction
-                            drawLine(
-                                color = Color(0xFFD8DBD2),
-                                start = androidx.compose.ui.geometry.Offset(0f, y),
-                                end = androidx.compose.ui.geometry.Offset(size.width, y),
-                                strokeWidth = 1.dp.toPx(),
-                                pathEffect = pathEffect,
-                            )
-                        }
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.Bottom,
+                    Column(
+                        modifier = Modifier
+                            .width(axisWidth)
+                            .height(chartHeight),
+                        horizontalAlignment = Alignment.End,
                     ) {
-                        items.forEach { item ->
-                            val fraction = (item.heightM / maxHeight).toFloat().coerceIn(0.05f, 1f)
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Bottom,
-                            ) {
-                                Image(
-                                    painter = painterResource(item.drawableRes),
-                                    contentDescription = item.labelLine1,
-                                    contentScale = ContentScale.Fit,
-                                    modifier = Modifier
-                                        .width(52.dp)
-                                        .height(chartHeight * fraction),
-                                    alignment = Alignment.BottomCenter,
+                        Column(
+                            modifier = Modifier.height(plotHeight),
+                            verticalArrangement = Arrangement.SpaceBetween,
+                            horizontalAlignment = Alignment.End,
+                        ) {
+                            axisLabels.forEach { value ->
+                                Text(
+                                    text = "$value m",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color(0xFF5B6654),
+                                    textAlign = TextAlign.End,
+                                    maxLines = 1,
                                 )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(item.labelLine1, fontSize = 9.sp, color = Color(0xFF3C4B37), textAlign = TextAlign.Center)
-                                if (item.labelLine2 != null) {
-                                    Text(item.labelLine2, fontSize = 9.sp, color = Color(0xFF3C4B37), textAlign = TextAlign.Center)
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(labelBandHeight))
+                    }
+
+                    Spacer(modifier = Modifier.width(10.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(chartHeight)
+                            .horizontalScroll(rememberScrollState()),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .width(chartWidth)
+                                .height(chartHeight),
+                        ) {
+                            ComparisonChartGrid(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(plotHeight)
+                                    .align(Alignment.TopStart),
+                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(plotHeight)
+                                    .align(Alignment.TopStart),
+                                horizontalArrangement = Arrangement.spacedBy(itemSpacing),
+                                verticalAlignment = Alignment.Bottom,
+                            ) {
+                                items.forEach { item ->
+                                    HeightComparisonPlotItem(
+                                        item = item,
+                                        plotHeight = plotHeight,
+                                        itemWidth = itemWidth,
+                                    )
                                 }
-                                Text("${item.heightM.roundToInt()}m", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF3C4B37), textAlign = TextAlign.Center)
+                            }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(labelBandHeight)
+                                    .align(Alignment.BottomStart),
+                                horizontalArrangement = Arrangement.spacedBy(itemSpacing),
+                                verticalAlignment = Alignment.Top,
+                            ) {
+                                items.forEach { item ->
+                                    HeightComparisonLabel(
+                                        item = item,
+                                        labelBandHeight = labelBandHeight,
+                                        itemWidth = itemWidth,
+                                    )
+                                }
                             }
                         }
                     }
@@ -994,7 +1065,178 @@ private fun GroessenvergleichCard(avgHubHeightM: Double) {
 }
 
 @Composable
-private fun WindraederDetailsTab(turbines: List<WindTurbine>, avgHubHeightM: Double) {
+private fun ComparisonChartGrid(modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier) {
+        val lineColor = Color(0xFFB9C2B0).copy(alpha = 0.42f)
+        val pathEffect = PathEffect.dashPathEffect(floatArrayOf(7f, 6f), 0f)
+        listOf(0f, 0.25f, 0.5f, 0.75f, 1f).forEach { fraction ->
+            val y = size.height * fraction
+            drawLine(
+                color = lineColor,
+                start = androidx.compose.ui.geometry.Offset(0f, y),
+                end = androidx.compose.ui.geometry.Offset(size.width, y),
+                strokeWidth = 1.dp.toPx(),
+                pathEffect = pathEffect,
+            )
+        }
+    }
+}
+
+@Composable
+private fun HeightComparisonPlotItem(
+    item: HeightComparisonItem,
+    plotHeight: androidx.compose.ui.unit.Dp,
+    itemWidth: androidx.compose.ui.unit.Dp,
+) {
+    val axisMaxHeightM = 400.0
+    val heightFraction = ((item.heightM ?: 0.0) / axisMaxHeightM).coerceIn(0.0, 1.0).toFloat()
+    val barHeight = if (item.heightM != null) {
+        (plotHeight * heightFraction).coerceAtLeast(20.dp)
+    } else {
+        20.dp
+    }
+
+    Column(
+        modifier = Modifier
+            .width(itemWidth)
+            .height(plotHeight),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(plotHeight),
+            contentAlignment = Alignment.BottomCenter,
+        ) {
+            Image(
+                painter = painterResource(item.drawableRes),
+                contentDescription = item.label,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .width(54.dp)
+                    .height(barHeight),
+                alignment = Alignment.BottomCenter,
+            )
+        }
+    }
+}
+
+@Composable
+private fun HeightComparisonLabel(
+    item: HeightComparisonItem,
+    labelBandHeight: androidx.compose.ui.unit.Dp,
+    itemWidth: androidx.compose.ui.unit.Dp,
+) {
+    val barAlpha = if (item.approximate) 0.78f else 1f
+    val valueText = item.heightM?.let {
+        val prefix = if (item.approximate) "ca. " else ""
+        "$prefix${it.roundToInt()} m"
+    } ?: "nicht verfügbar"
+
+    Column(
+        modifier = Modifier
+            .width(itemWidth)
+            .height(labelBandHeight)
+            .padding(top = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Top,
+    ) {
+        Text(
+            text = item.label,
+            style = MaterialTheme.typography.labelSmall,
+            color = Color(0xFF43483F),
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            text = valueText,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xFF191D17).copy(alpha = barAlpha),
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+private fun WindTurbine.comparisonHeight(): HeightMeasurement? {
+    val hubHeight = hubHeightM
+    val rotorDiameter = rotorDiameterM
+    return when {
+        hubHeight != null && rotorDiameter != null -> HeightMeasurement(
+            heightM = hubHeight + rotorDiameter / 2.0,
+            approximate = false,
+        )
+        hubHeight != null -> HeightMeasurement(
+            heightM = hubHeight,
+            approximate = true,
+        )
+        rotorDiameter != null -> HeightMeasurement(
+            heightM = rotorDiameter / 2.0,
+            approximate = true,
+        )
+        else -> null
+    }
+}
+
+private fun calculateAverageTurbineComparisonHeight(turbines: List<WindTurbine>): HeightMeasurement? {
+    val measurements = turbines.mapNotNull { it.comparisonHeight() }
+    if (measurements.isEmpty()) return null
+
+    return HeightMeasurement(
+        heightM = measurements.map { it.heightM }.average(),
+        approximate = measurements.any { it.approximate },
+    )
+}
+
+@Preview(showBackground = true, widthDp = 390, heightDp = 420)
+@Composable
+private fun GroessenvergleichCardPreview() {
+    MaterialTheme {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0xFFF8FBF1))
+                .padding(16.dp),
+        ) {
+            GroessenvergleichCard(
+                turbines = previewComparisonTurbines,
+            )
+        }
+    }
+}
+
+private val previewComparisonTurbines = listOf(
+    WindTurbine(
+        id = "preview-1",
+        windFarmId = "preview-farm",
+        manufacturer = "Vestas",
+        model = "V150",
+        ratedPowerKw = 5000.0,
+        rotorDiameterM = 150.0,
+        hubHeightM = 105.0,
+        commissioningYear = 2021,
+        status = WindFarmStatus.IN_BETRIEB,
+        operator = "WindNah",
+    ),
+    WindTurbine(
+        id = "preview-2",
+        windFarmId = "preview-farm",
+        manufacturer = "Nordex",
+        model = "N149",
+        ratedPowerKw = 4500.0,
+        rotorDiameterM = 149.0,
+        hubHeightM = 105.0,
+        commissioningYear = 2020,
+        status = WindFarmStatus.IN_BETRIEB,
+        operator = "WindNah",
+    ),
+)
+
+@Composable
+private fun WindraederDetailsTab(turbines: List<WindTurbine>) {
     if (turbines.isEmpty()) {
         Box(
             modifier = Modifier.fillMaxSize(),
@@ -1035,7 +1277,7 @@ private fun WindraederDetailsTab(turbines: List<WindTurbine>, avgHubHeightM: Dou
             }
         }
         item {
-            GroessenvergleichCard(avgHubHeightM = avgHubHeightM)
+            GroessenvergleichCard(turbines = turbines)
         }
     }
 }
@@ -1112,7 +1354,7 @@ private fun TurbineCard(
                         TurbineSpecRow(value = "$it", label = "Baujahr")
                     }
                     turbine.operator?.let {
-                        TurbineSpecRow(value = it, label = "Betreiber", valueBold = true)
+                        TurbineSpecRow(value = it, label = "Betreiber")
                     }
                 }
 
@@ -1131,7 +1373,7 @@ private fun TurbineCard(
 }
 
 @Composable
-private fun TurbineSpecRow(value: String, label: String, valueBold: Boolean = false) {
+private fun TurbineSpecRow(value: String, label: String) {
     Column(modifier = Modifier.padding(bottom = 16.dp)) {
         Text(
             text = value,
@@ -1156,11 +1398,28 @@ private fun formatDecimal(value: Double, decimals: Int): String {
     return formatted.replace('.', ',')
 }
 
-private fun formatDecimalD(value: Double, decimals: Int): String =
-    String.format("%.${decimals}f", value).replace('.', ',')
-
 private fun formatMwLarge(kw: Double): String =
     String.format("%.1f", kw / 1000.0).replace('.', ',') + " MW"
+
+private val noiseSimulationDistancesM = listOf(100, 250, 500, 1000)
+private const val DEFAULT_NOISE_DISTANCE_INDEX = 2
+private const val NOISE_REFERENCE_DISTANCE_M = 500.0
+private const val NOISE_MIN_DB = 30.0
+private const val NOISE_MAX_DB = 90.0
+
+private fun estimateNoiseForDistance(referenceNoiseDbA: Double, distanceM: Int): Double =
+    (referenceNoiseDbA + 20.0 * log10(NOISE_REFERENCE_DISTANCE_M / distanceM.toDouble()))
+        .coerceIn(NOISE_MIN_DB, NOISE_MAX_DB)
+
+private fun noiseComparisonText(noiseDbA: Double): String {
+    val roundedNoiseDbA = noiseDbA.roundToInt()
+    val comparison = when {
+        noiseDbA >= 50.0 -> "einem normalen Gespräch"
+        noiseDbA >= 40.0 -> "einer ruhigen Wohnstraße"
+        else -> "einer Bibliothek"
+    }
+    return "Etwa $roundedNoiseDbA dB(A), vergleichbar mit $comparison."
+}
 
 private fun formatGwh(kwh: Double): String =
     String.format("%.1f", kwh / 1_000_000.0).replace('.', ',')
