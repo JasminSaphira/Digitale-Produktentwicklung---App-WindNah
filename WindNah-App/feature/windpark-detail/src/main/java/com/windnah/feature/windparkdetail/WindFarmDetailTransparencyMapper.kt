@@ -1,7 +1,6 @@
 package com.windnah.feature.windparkdetail
 
 import com.windnah.core.designsystem.components.TransparencyInfoUiModel
-import com.windnah.core.domain.usecase.WindFarmMetricTransparency
 import com.windnah.core.model.WindFarmDetail
 import kotlin.math.roundToInt
 
@@ -28,92 +27,82 @@ internal fun WindFarmDetailMetric.toTransparencyInfoUiModel(
         WindFarmDetailMetric.CurrentOutput -> TransparencyInfoUiModel(
             title = "Aktuelle Leistung",
             value = formatMegawatts(metrics.estimatedCurrentOutputKw),
-            meaning = "Zeigt, wie viel Strom der Windpark im Moment voraussichtlich erzeugt.",
-            calculation = "Aus aktueller Windgeschwindigkeit, Turbinenparametern und installierter Leistung wird eine geschaetzte Leistung berechnet.",
-            sources = listOf("DWD/BrightSky Wetterdaten", "MaStR Anlagendaten"),
-            updateFrequency = "alle 15 Minuten",
-            assumptions = WindFarmMetricTransparency.CURRENT_OUTPUT,
+            meaning = "Wie viel Strom der Windpark gerade ungefaehr erzeugt - in Echtzeit.",
+            calculation = "Die App kennt die Windgeschwindigkeit am Standort und weiss, wie viele Turbinen gerade aktiv sind. Daraus wird grob berechnet, wie viel Strom die Anlagen bei diesem Wind typischerweise liefern.",
+            dataUsed = "Live-Wetterdaten von DWD/BrightSky und Anlagendaten aus dem Marktstammdatenregister (MaStR).",
+            sources = listOf("DWD/BrightSky Live-Wetterdaten", "MaStR Anlagendaten"),
         )
 
         WindFarmDetailMetric.WindSpeed -> TransparencyInfoUiModel(
             title = "Windgeschwindigkeit",
             value = weather?.let { "${formatDecimal(it.windSpeedMs, 1)} m/s" } ?: "Keine Live-Daten",
-            meaning = "Beschreibt die aktuell gemeldete Windgeschwindigkeit am Standort.",
-            calculation = "Der Wert kommt aus Wetterdaten nahe des Windparks und wird fuer die aktuelle Leistungsabschaetzung verwendet.",
-            sources = listOf("DWD/BrightSky Livedaten"),
-            updateFrequency = "alle 15 Minuten",
-            assumptions = if (weather == null) "Wenn keine Live-Daten vorliegen, zeigt die App einen Ersatztext statt eines Messwerts." else null,
+            meaning = "Wie stark der Wind gerade am Standort des Windparks weht.",
+            calculation = "Der Wert wird direkt von der naechstgelegenen Wetterstation abgerufen - ohne Umrechnung oder Schaetzung. Er ist gleichzeitig die Grundlage fuer die Leistungsberechnung.",
+            dataUsed = "Live-Wetterdaten von DWD/BrightSky.",
+            sources = listOf("DWD/BrightSky Live-Wetterdaten"),
         )
 
         WindFarmDetailMetric.AnnualProduction -> TransparencyInfoUiModel(
             title = "Jahresproduktion",
             value = "${formatGigawattHours(metrics.estimatedAnnualProductionKwh)} GWh",
-            meaning = "Schaetzt, wie viel Strom der Windpark in einem durchschnittlichen Jahr erzeugen kann.",
-            calculation = "Installierte Leistung mal 2.000 Volllaststunden pro Jahr.",
+            meaning = "Wie viel Strom der Windpark in einem durchschnittlichen Jahr voraussichtlich erzeugt.",
+            calculation = "In Deutschland laufen Windraeder im Modell rund 2.000 Stunden pro Jahr auf voller Leistung. Die installierte Gesamtleistung des Parks wird mit diesem Wert multipliziert.",
+            dataUsed = "Installierte Leistung aus MaStR und Berechnungsmodell von WindNah.",
             sources = listOf("MaStR installierte Leistung", "WindNah Berechnungsmodell"),
-            updateFrequency = "taeglich",
-            assumptions = WindFarmMetricTransparency.ANNUAL_PRODUCTION,
         )
 
         WindFarmDetailMetric.Households -> TransparencyInfoUiModel(
             title = "Haushalte versorgt",
             value = formatNumber(metrics.householdsSupplied),
-            meaning = "Uebersetzt die Jahresproduktion in eine alltagsnahe Groesse.",
-            calculation = "Jahresproduktion geteilt durch 3.500 kWh durchschnittlichen Jahresverbrauch je 2-Personen-Haushalt.",
-            sources = listOf("Statistisches Bundesamt Haushaltsverbrauch", "MaStR Anlagendaten"),
-            updateFrequency = "taeglich",
-            assumptions = WindFarmMetricTransparency.HOUSEHOLDS_SUPPLIED,
+            meaning = "Wie viele Haushalte der Windpark mit seinem Jahresstrom theoretisch versorgen koennte - als greifbare Alltagszahl.",
+            calculation = "Ein typischer 2-Personen-Haushalt verbraucht rund 3.500 kWh Strom pro Jahr. Die Jahresproduktion des Parks wird durch diesen Wert geteilt.",
+            dataUsed = "Berechnete Jahresproduktion und Verbrauchsdaten des Statistischen Bundesamts.",
+            sources = listOf("Berechnete Jahresproduktion", "Statistisches Bundesamt Haushaltsverbrauch"),
         )
 
         WindFarmDetailMetric.Co2Savings -> TransparencyInfoUiModel(
             title = "CO2-Einsparung",
             value = "${formatNumber(metrics.co2SavingsTonnesPerYear.roundToInt())} t",
-            meaning = "Zeigt, wie viel CO2 gegenueber dem durchschnittlichen Strommix rechnerisch vermieden wird.",
-            calculation = "Jahresproduktion mal Differenz aus deutschem Strommix und Windkraft-Lebenszykluswert.",
-            sources = listOf("Umweltbundesamt Strommix", "Windkraft Lebenszykluswert", "WindNah Berechnungsmodell"),
-            updateFrequency = "taeglich",
-            assumptions = WindFarmMetricTransparency.CO2_SAVINGS,
+            meaning = "Wie viel CO2 rechnerisch eingespart wird - verglichen mit Strom aus dem normalen Stromnetz.",
+            calculation = "Die Differenz zwischen durchschnittlichem Netzstrom und Windstrom wird mit der Jahresproduktion multipliziert. So entsteht die rechnerisch eingesparte CO2-Menge.",
+            dataUsed = "Berechnete Jahresproduktion sowie Emissionsfaktoren fuer Strommix und Windenergie vom Umweltbundesamt.",
+            sources = listOf("Berechnete Jahresproduktion", "Umweltbundesamt Emissionsfaktoren", "WindNah Berechnungsmodell"),
         )
 
         WindFarmDetailMetric.LocalEnergyContribution -> TransparencyInfoUiModel(
             title = "Lokaler Energiebeitrag",
             value = metrics.localEnergyContributionPercent?.let { "${it.roundToInt()} %" } ?: "Nicht verfuegbar",
-            meaning = "Ordnet die Windpark-Erzeugung grob im Verhaeltnis zum lokalen Strombedarf ein.",
-            calculation = "Geschaetzte Jahresproduktion wird mit einem modellierten kommunalen Verbrauch verglichen.",
+            meaning = "Wie viel des lokalen Strombedarfs der Windpark rechnerisch abdecken koennte - als grobe Einordnung fuer die Region.",
+            calculation = "Die geschaetzte Jahresproduktion des Windparks wird mit einem modellierten Strombedarf der umliegenden Kommune verglichen. Das ist eine Naeherung: Der Strom fliesst ins allgemeine Netz, nicht direkt in die Gemeinde.",
+            dataUsed = "Anlagendaten aus MaStR und ein vereinfachtes kommunales Verbrauchsmodell von WindNah.",
             sources = listOf("MaStR Anlagendaten", "WindNah Gemeinde-Verbrauchsmodell"),
-            updateFrequency = "monatlich",
-            assumptions = WindFarmMetricTransparency.LOCAL_ENERGY,
         )
 
         WindFarmDetailMetric.MunicipalRevenue -> TransparencyInfoUiModel(
             title = "Kommunale Einnahmen",
             value = metrics.municipalRevenueEurPerYear?.let { "${formatNumber(it.roundToInt())} EUR" } ?: "Nicht verfuegbar",
-            meaning = "Schaetzt, welcher finanzielle Beitrag fuer die Kommune pro Jahr entstehen kann.",
-            calculation = "Jahresproduktion mal EEG-Paragraf-6-Richtwert von 0,2 ct/kWh.",
-            sources = listOf("EEG Paragraf 6 Richtwert", "WindNah Berechnungsmodell"),
-            updateFrequency = "monatlich",
-            assumptions = WindFarmMetricTransparency.MUNICIPAL_REVENUE,
+            meaning = "Wie viel Geld die Gemeinde durch den Windpark jaehrlich einnehmen koennte - als grobe Orientierung.",
+            calculation = "Kommunen koennen nach EEG an Windparks auf ihrem Gebiet beteiligt werden. Die Jahresproduktion des Parks wird mit dem gesetzlichen Richtwert pro Kilowattstunde multipliziert.",
+            dataUsed = "Berechnete Jahresproduktion und kommunaler EEG-Beteiligungswert nach Paragraph 6 EEG 2023.",
+            sources = listOf("Berechnete Jahresproduktion", "EEG Paragraph 6 Beteiligungswert", "WindNah Berechnungsmodell"),
         )
 
         WindFarmDetailMetric.NoiseEstimate -> TransparencyInfoUiModel(
             title = "Laermschaetzung",
             value = metrics.estimatedNoiseLevelDbA?.let { "${it.roundToInt()} dB(A)" } ?: "Nicht verfuegbar",
-            meaning = "Gibt eine bildungsorientierte Einschaetzung der Schallimmission in Referenzentfernung.",
-            calculation = "Aus Turbinenanzahl, Rotordurchmesser, Auslastung, Wind und Entfernung wird ein grober dB(A)-Wert abgeleitet.",
-            sources = listOf("MaStR Turbinendaten", "DWD/BrightSky Wetterdaten", "WindNah Schallmodell"),
-            updateFrequency = "alle 15 Minuten",
-            assumptions = metrics.estimatedNoiseLevelDbA?.let { WindFarmMetricTransparency.NOISE }
-                ?: "Ohne aktive Turbinen oder Wetterdaten kann keine Laermschaetzung berechnet werden.",
+            meaning = "Wie laut die Windraeder am gewaehlten Standort ungefaehr wahrnehmbar sein koennten.",
+            calculation = "Die App berechnet einen Naeherungswert aus Abstand, aktueller Auslastung und typischen Schallwerten fuer diesen Anlagentyp. Der Wert ist keine offizielle Laermmessung oder behoerdliche Bewertung.",
+            dataUsed = "Anlagendaten aus MaStR und vereinfachte Annahmen zur Schallausbreitung.",
+            sources = listOf("MaStR Anlagendaten", "WindNah Schallmodell"),
         )
 
         WindFarmDetailMetric.SizeComparison -> TransparencyInfoUiModel(
             title = "Groessenvergleich",
             value = averageComparisonHeight(detail)?.let { "ca. ${it.roundToInt()} m" } ?: "Nicht verfuegbar",
-            meaning = "Vergleicht die Hoehe der Windraeder mit bekannten Bauwerken.",
-            calculation = "Wenn vorhanden: Nabenhoehe plus halber Rotordurchmesser. Sonst wird mit verfuegbaren Teilwerten gearbeitet.",
+            meaning = "Wie hoch die Windraeder wirklich sind - verglichen mit bekannten Bauwerken.",
+            calculation = "Die App nutzt Nabenhoehe und Rotordurchmesser aus den technischen Anlagendaten. Daraus ergibt sich die Gesamthoehe von der Bodenplatte bis zur Rotorspitze. Fehlen einzelne Werte, wird mit den vorhandenen Angaben gerechnet.",
+            dataUsed = "Nabenhoehe und Rotordurchmesser aus den Turbinendaten im MaStR.",
             sources = listOf("MaStR Turbinenstammdaten", "Referenzhoehen bekannter Bauwerke"),
-            updateFrequency = "bei Aktualisierung der Anlagendaten",
-            assumptions = "Fehlende Nabenhoehen oder Rotordurchmesser fuehren zu Naeherungswerten.",
         )
     }
 }

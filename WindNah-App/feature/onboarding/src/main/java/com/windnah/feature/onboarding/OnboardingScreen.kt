@@ -44,6 +44,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.windnah.core.designsystem.components.WindNahFooter
 import kotlinx.coroutines.launch
 
 private data class OnboardingPageData(
@@ -216,6 +217,7 @@ fun OnboardingScreen(
                 )
             }
         }
+
     }
 }
 
@@ -256,6 +258,11 @@ private fun OnboardingPageContent(page: OnboardingPageData) {
                 text = page.body,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            WindNahFooter(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp),
             )
         }
     }

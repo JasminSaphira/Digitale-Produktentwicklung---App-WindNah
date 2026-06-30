@@ -9,8 +9,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.AccountCircle
@@ -38,6 +40,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.windnah.core.designsystem.components.WindNahFooter
 
 @Composable
 fun LoginScreen(
@@ -95,6 +98,7 @@ private fun LoginScreenContent(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(horizontal = 24.dp)
+                .verticalScroll(rememberScrollState())
                 .imePadding(),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
@@ -185,6 +189,12 @@ private fun LoginScreenContent(
                     color = MaterialTheme.colorScheme.primary,
                 )
             }
+
+            WindNahFooter(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp, bottom = 24.dp),
+            )
         }
     }
 }

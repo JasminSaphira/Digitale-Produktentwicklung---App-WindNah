@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -30,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.windnah.core.designsystem.components.FactCard
+import com.windnah.core.designsystem.components.WindNahFooter
 import com.windnah.core.designsystem.components.WindNahScreenHeader
 import com.windnah.core.model.FactCategory
 
@@ -126,11 +126,11 @@ private fun FactsScreenContent(
             }
 
             item {
-                FactsFooter(
+                WindNahFooter(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 32.dp)
-                        .padding(top = 16.dp),
+                        .padding(horizontal = 28.dp)
+                        .padding(top = 16.dp, bottom = 4.dp),
                 )
             }
         }
@@ -211,32 +211,5 @@ private fun FactsErrorState(
         Button(onClick = onRetry) {
             Text("Erneut versuchen")
         }
-    }
-}
-
-@Composable
-private fun FactsFooter(
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            text = "Diese App soll Ihnen helfen, eine informierte eigene Meinung zu bilden. " +
-                "Wir streben Neutralit\u00e4t und wissenschaftliche Genauigkeit an.",
-            style = MaterialTheme.typography.bodySmall.copy(
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                lineHeight = 18.sp,
-            ),
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        Text(
-            text = "Umweltbundesamt 2026",
-            style = MaterialTheme.typography.labelSmall.copy(
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Medium,
-            ),
-        )
     }
 }

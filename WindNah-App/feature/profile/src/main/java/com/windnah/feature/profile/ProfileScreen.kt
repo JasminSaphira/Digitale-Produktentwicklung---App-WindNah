@@ -81,6 +81,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.windnah.core.designsystem.components.WindNahFooter
 import com.windnah.core.designsystem.components.WindNahScreenHeader
 import com.windnah.core.model.AuthUser
 
@@ -154,8 +155,6 @@ fun ProfileScreen(
                     onEditClick = { showLoginSheet = true },
                 )
             }
-
-            item { AppInfoCard() }
 
             item {
                 ProfileSection(title = "Berechtigungen") {
@@ -309,25 +308,15 @@ fun ProfileScreen(
                 }
             }
 
+
+            
+
             item {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(
-                        text = "WindNah v1.2.0 · UBA 2026",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center,
-                    )
-                    Text(
-                        text = "Entwickelt im Auftrag des Umweltbundesamts ",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline,
-                        textAlign = TextAlign.Center,
-                    )
-                }
+                WindNahFooter(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                )
             }
         }
     }

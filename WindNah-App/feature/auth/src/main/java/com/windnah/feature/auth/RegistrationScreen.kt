@@ -63,6 +63,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.windnah.core.designsystem.components.WindNahFooter
 
 @Composable
 fun RegistrationScreen(
@@ -123,6 +124,12 @@ private fun RegistrationScreenContent(
         FooterLoginLink(
             onNavigateToLogin = onNavigateToLogin,
             modifier = Modifier.padding(top = 28.dp, bottom = 32.dp),
+        )
+
+        WindNahFooter(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 32.dp),
         )
     }
 }

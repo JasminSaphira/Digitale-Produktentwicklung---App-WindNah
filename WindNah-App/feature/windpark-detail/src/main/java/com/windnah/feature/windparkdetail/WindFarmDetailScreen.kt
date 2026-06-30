@@ -71,6 +71,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.windnah.core.designsystem.components.TransparencyInfoUiModel
+import com.windnah.core.designsystem.components.WindNahFooter
 import com.windnah.core.designsystem.components.WindNahTransparencyBottomSheet
 import com.windnah.core.model.EnergyMetrics
 import com.windnah.core.model.WeatherData
@@ -384,6 +385,11 @@ private fun UebersichtTab(
         NoiseEstimateCard(
             metrics = metrics,
             onInfoClick = { onInfoClick(WindFarmDetailMetric.NoiseEstimate) },
+        )
+        WindNahFooter(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
         )
     }
 }
@@ -1328,9 +1334,12 @@ private fun WindraederDetailsTab(
     onSizeComparisonInfoClick: () -> Unit,
 ) {
     if (turbines.isEmpty()) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center,
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color(0xFFF8FBF1)),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
                 text = "Keine Windräder verfügbar",
@@ -1372,6 +1381,14 @@ private fun WindraederDetailsTab(
                 onInfoClick = onSizeComparisonInfoClick,
             )
         }
+
+        item {
+            WindNahFooter(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp),
+            )
+        }
     }
 }
 
@@ -1391,12 +1408,11 @@ private fun TurbineCard(
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.Start,
                 verticalAlignment = Alignment.Top,
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f),
                 ) {
                     StatusChip(status = turbine.status)
                     Spacer(modifier = Modifier.width(10.dp))
@@ -1417,12 +1433,6 @@ private fun TurbineCard(
                         }
                     }
                 }
-                Icon(
-                    imageVector = Icons.Outlined.Info,
-                    contentDescription = "Info",
-                    tint = Color(0xFF3F6836),
-                    modifier = Modifier.size(20.dp),
-                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -1457,7 +1467,7 @@ private fun TurbineCard(
                     contentScale = ContentScale.Fit,
                     modifier = Modifier
                         .padding(start = 8.dp, top = 4.dp)
-                        .size(width = 88.dp, height = 132.dp),
+                        .size(width = 136.dp, height = 204.dp),
                     alignment = Alignment.TopCenter,
                 )
             }

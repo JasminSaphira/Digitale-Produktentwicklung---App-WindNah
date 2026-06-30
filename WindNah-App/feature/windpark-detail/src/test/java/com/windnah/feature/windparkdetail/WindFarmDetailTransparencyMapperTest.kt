@@ -8,7 +8,6 @@ import com.windnah.core.model.WindFarmStatus
 import com.windnah.core.model.WindTurbine
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -25,8 +24,8 @@ class WindFarmDetailTransparencyMapperTest {
             assertTrue(info.value.isNotBlank())
             assertTrue(info.meaning.isNotBlank())
             assertTrue(info.calculation.isNotBlank())
+            assertTrue(info.dataUsed.isNotBlank())
             assertFalse(info.sources.isEmpty())
-            assertTrue(info.updateFrequency.isNotBlank())
         }
     }
 
@@ -37,7 +36,6 @@ class WindFarmDetailTransparencyMapperTest {
         val info = WindFarmDetailMetric.WindSpeed.toTransparencyInfoUiModel(detail)
 
         assertEquals("Keine Live-Daten", info.value)
-        assertNotNull(info.assumptions)
     }
 
     @Test
@@ -49,7 +47,6 @@ class WindFarmDetailTransparencyMapperTest {
         val info = WindFarmDetailMetric.NoiseEstimate.toTransparencyInfoUiModel(detail)
 
         assertEquals("Nicht verfuegbar", info.value)
-        assertNotNull(info.assumptions)
     }
 
     @Test

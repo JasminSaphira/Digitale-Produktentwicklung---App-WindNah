@@ -41,9 +41,8 @@ data class TransparencyInfoUiModel(
     val value: String,
     val meaning: String,
     val calculation: String,
+    val dataUsed: String,
     val sources: List<String>,
-    val updateFrequency: String,
-    val assumptions: String? = null,
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -128,11 +127,9 @@ private fun TransparencyHeroCard(info: TransparencyInfoUiModel) {
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary,
             )
-            TransparencyTextBlock(title = "Bedeutung", text = info.meaning)
-            TransparencyTextBlock(title = "Berechnung", text = info.calculation)
-            info.assumptions?.let { assumptions ->
-                TransparencyTextBlock(title = "Annahmen", text = assumptions)
-            }
+            TransparencyTextBlock(title = "Was zeigt dieser Wert?", text = info.meaning)
+            TransparencyTextBlock(title = "Woher kommt die Zahl?", text = info.calculation)
+            TransparencyTextBlock(title = "Welche Daten werden verwendet?", text = info.dataUsed)
         }
     }
 }
@@ -174,11 +171,6 @@ private fun TransparencySources(info: TransparencyInfoUiModel) {
             )
             Spacer(modifier = Modifier.height(4.dp))
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-            Text(
-                text = "Aktualisierung: ${info.updateFrequency}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
     }
 }
