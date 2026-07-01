@@ -37,7 +37,7 @@ class GetWindFarmDetailUseCase @Inject constructor(
                 val annualProductionKwh = calculateAnnualProductionUseCase(detail.windFarm.totalCapacityKw)
                 val currentOutputKw = weather?.let {
                     calculateCurrentOutputUseCase(it, detail.turbines, detail.windFarm.totalCapacityKw)
-                } ?: detail.energyMetrics.estimatedCurrentOutputKw
+                } ?: 0.0
                 val noiseEstimateDbA = weather?.let {
                     calculateNoiseEstimateUseCase(
                         weather = it,

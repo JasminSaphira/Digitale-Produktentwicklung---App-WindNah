@@ -34,10 +34,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.windnah.core.model.FactSource
 
 private val FactPrimary = Color(0xFF3F6836)
 private val FactMythChip = Color(0xFFDFE4D8)
@@ -49,7 +51,7 @@ private val FactBodyText = Color(0xFF53634E)
 fun FactCard(
     myth: String,
     explanation: String,
-    sources: List<String> = emptyList(),
+    sources: List<FactSource> = emptyList(),
     modifier: Modifier = Modifier,
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -126,7 +128,7 @@ fun FactCard(
 @Composable
 private fun FactDetail(
     explanation: String,
-    sources: List<String>,
+    sources: List<FactSource>,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -157,7 +159,7 @@ private fun FactDetail(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 sources.forEach { source ->
-                    SourcePill(source = "Quelle: $source")
+                    SourcePill(source = source)
                 }
             }
         }
@@ -192,17 +194,24 @@ private fun LabelPill(
 
 @Composable
 private fun SourcePill(
-    source: String,
+    source: FactSource,
     modifier: Modifier = Modifier,
 ) {
+    val uriHandler = LocalUriHandler.current
+    val clickableModifier = source.url?.let { url ->
+        Modifier.clickable { uriHandler.openUri(url) }
+    } ?: Modifier
+
     Surface(
-        modifier = modifier.widthIn(max = 280.dp),
+        modifier = modifier
+            .widthIn(max = 280.dp)
+            .then(clickableModifier),
         color = FactPrimary.copy(alpha = 0.08f),
         shape = RoundedCornerShape(8.dp),
         border = BorderStroke(1.dp, FactPrimary.copy(alpha = 0.10f)),
     ) {
         Text(
-            text = source,
+            text = "Quelle: ${source.label}",
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
             style = MaterialTheme.typography.labelSmall.copy(
                 color = FactPrimary,

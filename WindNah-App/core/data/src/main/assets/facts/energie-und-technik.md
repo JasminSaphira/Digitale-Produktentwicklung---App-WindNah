@@ -36,6 +36,6 @@ Moderne Anlagen können je nach Standort mehrere Millionen Kilowattstunden Strom
 
 title: Windräder können nicht recycelt werden
 myth: „Windräder können nicht recycelt werden.“
-sources: Umweltbundesamt, 2023
+sources: [Umweltbundesamt, 2023](https://www.umweltbundesamt.de/themen/klima-energie/erneuerbare-energien/windenergie-an-land)
 
 Stahl, Beton, Kupfer und viele weitere Bestandteile lassen sich gut verwerten. Rotorblätter sind anspruchsvoller, werden aber zunehmend recycelt oder in industriellen Prozessen weitergenutzt.

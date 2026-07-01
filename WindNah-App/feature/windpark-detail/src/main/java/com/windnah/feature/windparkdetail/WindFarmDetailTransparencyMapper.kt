@@ -20,89 +20,105 @@ internal fun WindFarmDetailMetric.toTransparencyInfoUiModel(
     detail: WindFarmDetail,
 ): TransparencyInfoUiModel {
     val metrics = detail.energyMetrics
-    val windFarm = detail.windFarm
     val weather = detail.weather
 
     return when (this) {
         WindFarmDetailMetric.CurrentOutput -> TransparencyInfoUiModel(
             title = "Aktuelle Leistung",
-            value = formatMegawatts(metrics.estimatedCurrentOutputKw),
-            meaning = "Wie viel Strom der Windpark gerade ungefaehr erzeugt - in Echtzeit.",
-            calculation = "Die App kennt die Windgeschwindigkeit am Standort und weiss, wie viele Turbinen gerade aktiv sind. Daraus wird grob berechnet, wie viel Strom die Anlagen bei diesem Wind typischerweise liefern.",
-            dataUsed = "Live-Wetterdaten von DWD/BrightSky und Anlagendaten aus dem Marktstammdatenregister (MaStR).",
-            sources = listOf("DWD/BrightSky Live-Wetterdaten", "MaStR Anlagendaten"),
+            value = weather?.let { formatMegawatts(metrics.estimatedCurrentOutputKw) } ?: "Keine Live-Daten",
+            meaning = "Wie viel Strom der Windpark gerade ungefähr erzeugt – in Echtzeit.",
+            calculation = "Die App kennt die Windgeschwindigkeit am Standort und weiß, wie viele Turbinen gerade aktiv sind. Daraus wird grob berechnet, wie viel Strom die Anlagen bei diesem Wind typischerweise liefern.",
+            sources = listOf(
+                "Live-Wetterdaten (DWD / BrightSky)",
+                "Anlagendaten aus dem Marktstammdatenregister (MaStR)",
+            ),
         )
 
         WindFarmDetailMetric.WindSpeed -> TransparencyInfoUiModel(
             title = "Windgeschwindigkeit",
             value = weather?.let { "${formatDecimal(it.windSpeedMs, 1)} m/s" } ?: "Keine Live-Daten",
             meaning = "Wie stark der Wind gerade am Standort des Windparks weht.",
-            calculation = "Der Wert wird direkt von der naechstgelegenen Wetterstation abgerufen - ohne Umrechnung oder Schaetzung. Er ist gleichzeitig die Grundlage fuer die Leistungsberechnung.",
-            dataUsed = "Live-Wetterdaten von DWD/BrightSky.",
-            sources = listOf("DWD/BrightSky Live-Wetterdaten"),
+            calculation = "Der Wert wird direkt von der nächstgelegenen Wetterstation abgerufen – ohne Umrechnung oder Schätzung. Er ist gleichzeitig die Grundlage für die Leistungsberechnung.",
+            sources = listOf("Live-Wetterdaten (DWD / BrightSky)"),
         )
 
         WindFarmDetailMetric.AnnualProduction -> TransparencyInfoUiModel(
             title = "Jahresproduktion",
             value = "${formatGigawattHours(metrics.estimatedAnnualProductionKwh)} GWh",
             meaning = "Wie viel Strom der Windpark in einem durchschnittlichen Jahr voraussichtlich erzeugt.",
-            calculation = "In Deutschland laufen Windraeder im Modell rund 2.000 Stunden pro Jahr auf voller Leistung. Die installierte Gesamtleistung des Parks wird mit diesem Wert multipliziert.",
-            dataUsed = "Installierte Leistung aus MaStR und Berechnungsmodell von WindNah.",
-            sources = listOf("MaStR installierte Leistung", "WindNah Berechnungsmodell"),
+            calculation = "In Deutschland laufen Windräder im Schnitt rund 2.000 Stunden pro Jahr auf voller Leistung. Die installierte Gesamtleistung des Parks wird einfach mit diesem Wert multipliziert.",
+            example = "Ein Park mit 10 MW × 2.000 Stunden = 20.000 MWh pro Jahr",
+            sources = listOf(
+                "Installierte Leistung aus MaStR",
+                "Berechnungsmodell von WindNah",
+            ),
         )
 
         WindFarmDetailMetric.Households -> TransparencyInfoUiModel(
             title = "Haushalte versorgt",
             value = formatNumber(metrics.householdsSupplied),
-            meaning = "Wie viele Haushalte der Windpark mit seinem Jahresstrom theoretisch versorgen koennte - als greifbare Alltagszahl.",
-            calculation = "Ein typischer 2-Personen-Haushalt verbraucht rund 3.500 kWh Strom pro Jahr. Die Jahresproduktion des Parks wird durch diesen Wert geteilt.",
-            dataUsed = "Berechnete Jahresproduktion und Verbrauchsdaten des Statistischen Bundesamts.",
-            sources = listOf("Berechnete Jahresproduktion", "Statistisches Bundesamt Haushaltsverbrauch"),
+            meaning = "Wie viele Haushalte der Windpark mit seinem Jahresstrom theoretisch versorgen könnte – als greifbare Alltagszahl.",
+            calculation = "Ein typischer 2-Personen-Haushalt verbraucht laut Statistischem Bundesamt rund 3.500 kWh Strom pro Jahr. Die Jahresproduktion des Parks wird durch diesen Wert geteilt.",
+            example = "20.000 MWh ÷ 3,5 MWh = ca. 5.700 Haushalte",
+            sources = listOf(
+                "Berechnete Jahresproduktion",
+                "Verbrauchsdaten Statistisches Bundesamt (Stand 2023)",
+            ),
         )
 
         WindFarmDetailMetric.Co2Savings -> TransparencyInfoUiModel(
-            title = "CO2-Einsparung",
+            title = "CO₂-Einsparung",
             value = "${formatNumber(metrics.co2SavingsTonnesPerYear.roundToInt())} t",
-            meaning = "Wie viel CO2 rechnerisch eingespart wird - verglichen mit Strom aus dem normalen Stromnetz.",
-            calculation = "Die Differenz zwischen durchschnittlichem Netzstrom und Windstrom wird mit der Jahresproduktion multipliziert. So entsteht die rechnerisch eingesparte CO2-Menge.",
-            dataUsed = "Berechnete Jahresproduktion sowie Emissionsfaktoren fuer Strommix und Windenergie vom Umweltbundesamt.",
-            sources = listOf("Berechnete Jahresproduktion", "Umweltbundesamt Emissionsfaktoren", "WindNah Berechnungsmodell"),
+            meaning = "Wie viel CO₂ rechnerisch eingespart wird – verglichen mit dem Strom, der sonst aus dem normalen Stromnetz käme.",
+            calculation = "Normaler Netzstrom kommt zu einem großen Teil aus Gas- und Kohlekraftwerken und erzeugt dabei CO₂. Windstrom dagegen so gut wie keins. Die Differenz zwischen beiden Werten wird mit der Jahresproduktion multipliziert – so entsteht die eingesparte CO₂-Menge.",
+            example = "Netzstrom erzeugt ~363 g CO₂ pro kWh, Windstrom ~9 g → Ersparnis von ~354 g pro kWh × Jahresproduktion",
+            sources = listOf(
+                "Berechnete Jahresproduktion",
+                "Emissionsfaktoren für Strom-Mix und Windenergie vom Umweltbundesamt",
+            ),
         )
 
         WindFarmDetailMetric.LocalEnergyContribution -> TransparencyInfoUiModel(
             title = "Lokaler Energiebeitrag",
-            value = metrics.localEnergyContributionPercent?.let { "${it.roundToInt()} %" } ?: "Nicht verfuegbar",
-            meaning = "Wie viel des lokalen Strombedarfs der Windpark rechnerisch abdecken koennte - als grobe Einordnung fuer die Region.",
-            calculation = "Die geschaetzte Jahresproduktion des Windparks wird mit einem modellierten Strombedarf der umliegenden Kommune verglichen. Das ist eine Naeherung: Der Strom fliesst ins allgemeine Netz, nicht direkt in die Gemeinde.",
-            dataUsed = "Anlagendaten aus MaStR und ein vereinfachtes kommunales Verbrauchsmodell von WindNah.",
-            sources = listOf("MaStR Anlagendaten", "WindNah Gemeinde-Verbrauchsmodell"),
+            value = metrics.localEnergyContributionPercent?.let { "${it.roundToInt()} %" } ?: "Nicht verfügbar",
+            meaning = "Wie viel des lokalen Strombedarfs der Windpark rechnerisch abdecken könnte – als grobe Einordnung für die Region.",
+            calculation = "Die geschätzte Jahresproduktion des Windparks wird mit dem modellierten Strombedarf der umliegenden Kommune verglichen. So entsteht ein Prozentwert, der zeigt: Welchen Anteil könnte dieser Park theoretisch beisteuern?\n\nDies ist eine Näherung – der Strom fließt ins allgemeine Netz, nicht direkt in die Gemeinde.",
+            sources = listOf(
+                "Anlagendaten aus MaStR",
+                "Vereinfachtes kommunales Verbrauchsmodell von WindNah",
+            ),
         )
 
         WindFarmDetailMetric.MunicipalRevenue -> TransparencyInfoUiModel(
             title = "Kommunale Einnahmen",
-            value = metrics.municipalRevenueEurPerYear?.let { "${formatNumber(it.roundToInt())} EUR" } ?: "Nicht verfuegbar",
-            meaning = "Wie viel Geld die Gemeinde durch den Windpark jaehrlich einnehmen koennte - als grobe Orientierung.",
-            calculation = "Kommunen koennen nach EEG an Windparks auf ihrem Gebiet beteiligt werden. Die Jahresproduktion des Parks wird mit dem gesetzlichen Richtwert pro Kilowattstunde multipliziert.",
-            dataUsed = "Berechnete Jahresproduktion und kommunaler EEG-Beteiligungswert nach Paragraph 6 EEG 2023.",
-            sources = listOf("Berechnete Jahresproduktion", "EEG Paragraph 6 Beteiligungswert", "WindNah Berechnungsmodell"),
+            value = metrics.municipalRevenueEurPerYear?.let { "${formatNumber(it.roundToInt())} €" } ?: "Nicht verfügbar",
+            meaning = "Wie viel Geld die Gemeinde durch den Windpark jährlich einnehmen könnte – als grobe Orientierung.",
+            calculation = "Seit 2023 dürfen Kommunen per Gesetz (EEG) an Windparks auf ihrem Gebiet finanziell beteiligt werden. Die Jahresproduktion des Parks wird mit dem gesetzlich festgelegten Richtwert pro Kilowattstunde multipliziert.",
+            example = "20.000 MWh × 0,2 ct/kWh = ca. 40.000 € pro Jahr für die Kommune",
+            sources = listOf(
+                "Berechnete Jahresproduktion",
+                "Kommunaler EEG-Beteiligungswert (§ 6 EEG 2023)",
+            ),
         )
 
         WindFarmDetailMetric.NoiseEstimate -> TransparencyInfoUiModel(
-            title = "Laermschaetzung",
-            value = metrics.estimatedNoiseLevelDbA?.let { "${it.roundToInt()} dB(A)" } ?: "Nicht verfuegbar",
-            meaning = "Wie laut die Windraeder am gewaehlten Standort ungefaehr wahrnehmbar sein koennten.",
-            calculation = "Die App berechnet einen Naeherungswert aus Abstand, aktueller Auslastung und typischen Schallwerten fuer diesen Anlagentyp. Der Wert ist keine offizielle Laermmessung oder behoerdliche Bewertung.",
-            dataUsed = "Anlagendaten aus MaStR und vereinfachte Annahmen zur Schallausbreitung.",
-            sources = listOf("MaStR Anlagendaten", "WindNah Schallmodell"),
+            title = "Lärmschätzung",
+            value = metrics.estimatedNoiseLevelDbA?.let { "${it.roundToInt()} dB(A)" } ?: "Nicht verfügbar",
+            meaning = "Wie laut die Windräder am gewählten Standort ungefähr wahrnehmbar sein könnten.",
+            calculation = "Die App berechnet einen Näherungswert aus dem Abstand zum Windrad, der aktuellen Auslastung und typischen Schallwerten für diesen Anlagentyp. Je weiter weg, desto leiser – ähnlich wie bei jeder anderen Schallquelle.\n\nDies ist keine offizielle Lärmmessung oder behördliche Bewertung – sondern eine grobe technische Schätzung zur Orientierung.",
+            sources = listOf(
+                "Anlagendaten aus MaStR",
+                "Vereinfachte Annahmen zur Schallausbreitung",
+            ),
         )
 
         WindFarmDetailMetric.SizeComparison -> TransparencyInfoUiModel(
-            title = "Groessenvergleich",
-            value = averageComparisonHeight(detail)?.let { "ca. ${it.roundToInt()} m" } ?: "Nicht verfuegbar",
-            meaning = "Wie hoch die Windraeder wirklich sind - verglichen mit bekannten Bauwerken.",
-            calculation = "Die App nutzt Nabenhoehe und Rotordurchmesser aus den technischen Anlagendaten. Daraus ergibt sich die Gesamthoehe von der Bodenplatte bis zur Rotorspitze. Fehlen einzelne Werte, wird mit den vorhandenen Angaben gerechnet.",
-            dataUsed = "Nabenhoehe und Rotordurchmesser aus den Turbinendaten im MaStR.",
-            sources = listOf("MaStR Turbinenstammdaten", "Referenzhoehen bekannter Bauwerke"),
+            title = "Größenvergleich",
+            value = averageComparisonHeight(detail)?.let { "ca. ${it.roundToInt()} m" } ?: "Nicht verfügbar",
+            meaning = "Wie hoch die Windräder wirklich sind – verglichen mit bekannten Bauwerken, die man sich besser vorstellen kann.",
+            calculation = "Die App nutzt die Nabenhöhe (Mittelpunkt des Rotors) und den Rotordurchmesser aus den technischen Anlagendaten. Daraus ergibt sich die Gesamthöhe – also von der Bodenplatte bis zur Rotorspitze. Fehlen einzelne Werte, wird mit den vorhandenen Angaben gerechnet.",
+            example = "Nabenhöhe 140 m + halber Rotor 80 m = 220 m Gesamthöhe",
+            sources = listOf("Nabenhöhe & Rotordurchmesser aus den Turbinendaten (MaStR)"),
         )
     }
 }

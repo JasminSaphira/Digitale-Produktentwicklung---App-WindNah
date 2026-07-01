@@ -24,8 +24,29 @@ class WindFarmDetailTransparencyMapperTest {
             assertTrue(info.value.isNotBlank())
             assertTrue(info.meaning.isNotBlank())
             assertTrue(info.calculation.isNotBlank())
-            assertTrue(info.dataUsed.isNotBlank())
             assertFalse(info.sources.isEmpty())
+        }
+    }
+
+    @Test
+    fun `adds examples only for metrics with example wording`() {
+        val detail = sampleDetail()
+        val metricsWithExamples = setOf(
+            WindFarmDetailMetric.AnnualProduction,
+            WindFarmDetailMetric.Households,
+            WindFarmDetailMetric.Co2Savings,
+            WindFarmDetailMetric.MunicipalRevenue,
+            WindFarmDetailMetric.SizeComparison,
+        )
+
+        WindFarmDetailMetric.entries.forEach { metric ->
+            val info = metric.toTransparencyInfoUiModel(detail)
+
+            if (metric in metricsWithExamples) {
+                assertTrue(info.example?.isNotBlank() == true)
+            } else {
+                assertEquals(null, info.example)
+            }
         }
     }
 
@@ -46,7 +67,7 @@ class WindFarmDetailTransparencyMapperTest {
 
         val info = WindFarmDetailMetric.NoiseEstimate.toTransparencyInfoUiModel(detail)
 
-        assertEquals("Nicht verfuegbar", info.value)
+        assertEquals("Nicht verfügbar", info.value)
     }
 
     @Test

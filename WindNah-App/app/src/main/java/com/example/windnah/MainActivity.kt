@@ -4,9 +4,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Explore
@@ -142,11 +143,13 @@ private fun WindNahApp(
         bottomBar = {
             if (showBottomNav) {
                 NavigationBar(
-                    modifier = Modifier.shadow(
-                        elevation = 6.dp,
-                        shape = RectangleShape,
-                        clip = false,
-                    ),
+                    modifier = Modifier
+                        .navigationBarsPadding()
+                        .shadow(
+                            elevation = 6.dp,
+                            shape = RectangleShape,
+                            clip = false,
+                        ),
                     containerColor = navColors.containerColor,
                     windowInsets = WindowInsets(0, 0, 0, 0),
                 ) {

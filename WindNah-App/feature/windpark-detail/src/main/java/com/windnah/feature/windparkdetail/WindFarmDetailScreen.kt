@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -141,6 +142,7 @@ private fun WindFarmDetailContent(
     // Edge-to-edge: no Scaffold insets on the header, we handle them manually
     Scaffold(
         containerColor = Color(0xFFF8FBF1),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -365,6 +367,7 @@ private fun UebersichtTab(
             OutputCard(
                 windFarm = windFarm,
                 metrics = metrics,
+                weather = weather,
                 onInfoClick = { onInfoClick(WindFarmDetailMetric.CurrentOutput) },
             )
         }
@@ -398,14 +401,16 @@ private fun UebersichtTab(
 private fun OutputCard(
     windFarm: WindFarm,
     metrics: EnergyMetrics,
+    weather: WeatherData?,
     onInfoClick: () -> Unit,
 ) {
-    val ratio = if (windFarm.totalCapacityKw > 0.0) {
+    val hasLiveOutput = weather != null
+    val ratio = if (hasLiveOutput && windFarm.totalCapacityKw > 0.0) {
         (metrics.estimatedCurrentOutputKw / windFarm.totalCapacityKw).toFloat().coerceIn(0f, 1f)
     } else {
         0f
     }
-    val pct = if (windFarm.totalCapacityKw > 0.0) {
+    val pct = if (hasLiveOutput && windFarm.totalCapacityKw > 0.0) {
         (metrics.estimatedCurrentOutputKw / windFarm.totalCapacityKw * 100).roundToInt().coerceIn(0, 100)
     } else {
         0
@@ -443,13 +448,17 @@ private fun OutputCard(
             ) {
                 Column {
                     Text(
-                        text = formatMwLarge(metrics.estimatedCurrentOutputKw),
-                        fontSize = 30.sp,
+                        text = if (hasLiveOutput) formatMwLarge(metrics.estimatedCurrentOutputKw) else "Keine Live-Daten",
+                        fontSize = if (hasLiveOutput) 30.sp else 22.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF191D17),
                     )
                     Text(
-                        text = "aktueller Output · $pct% der Kapazität",
+                        text = if (hasLiveOutput) {
+                            "aktueller Output · $pct% der Kapazität"
+                        } else {
+                            "Wetterdaten aktuell nicht verfügbar"
+                        },
                         fontSize = 12.sp,
                         color = Color(0xFF73796E),
                     )
@@ -1437,39 +1446,43 @@ private fun TurbineCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    TurbineSpecRow(
-                        value = "${formatDecimal(turbine.ratedPowerKw / 1_000.0, 2)} MW",
-                        label = "Nennleistung",
-                    )
-                    turbine.rotorDiameterM?.let {
-                        TurbineSpecRow(value = "${it.roundToInt()} m", label = "Rotordurchmesser")
-                    }
-                    turbine.hubHeightM?.let {
-                        TurbineSpecRow(value = "${it.roundToInt()} m", label = "Nabenhöhe")
-                    }
-                    turbine.commissioningYear?.let {
-                        TurbineSpecRow(value = "$it", label = "Baujahr")
-                    }
-                    turbine.operator?.let {
-                        TurbineSpecRow(value = it, label = "Betreiber")
-                    }
-                }
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                val imageWidth = (maxWidth - 164.dp).coerceIn(136.dp, 176.dp)
 
-                Image(
-                    painter = painterResource(R.drawable.windrad_carousel),
-                    contentDescription = null,
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier
-                        .padding(start = 8.dp, top = 4.dp)
-                        .size(width = 136.dp, height = 204.dp),
-                    alignment = Alignment.TopCenter,
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        TurbineSpecRow(
+                            value = "${formatDecimal(turbine.ratedPowerKw / 1_000.0, 2)} MW",
+                            label = "Nennleistung",
+                        )
+                        turbine.rotorDiameterM?.let {
+                            TurbineSpecRow(value = "${it.roundToInt()} m", label = "Rotordurchmesser")
+                        }
+                        turbine.hubHeightM?.let {
+                            TurbineSpecRow(value = "${it.roundToInt()} m", label = "Nabenhöhe")
+                        }
+                        turbine.commissioningYear?.let {
+                            TurbineSpecRow(value = "$it", label = "Baujahr")
+                        }
+                        turbine.operator?.let {
+                            TurbineSpecRow(value = it, label = "Betreiber")
+                        }
+                    }
+
+                    Image(
+                        painter = painterResource(R.drawable.windrad_carousel),
+                        contentDescription = null,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier
+                            .padding(start = 8.dp, top = 4.dp)
+                            .size(width = imageWidth, height = imageWidth * 1.5f),
+                        alignment = Alignment.TopCenter,
+                    )
+                }
             }
         }
     }

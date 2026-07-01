@@ -6,5 +6,10 @@ data class FactArticle(
     val myth: String,
     val category: FactCategory,
     val explanation: String,
-    val sources: List<String>,
+    val sources: List<FactSource>,
+)
+
+data class FactSource(
+    val label: String,
+    val url: String? = null,
 )

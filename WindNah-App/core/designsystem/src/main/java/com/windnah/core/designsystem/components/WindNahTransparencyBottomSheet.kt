@@ -41,7 +41,7 @@ data class TransparencyInfoUiModel(
     val value: String,
     val meaning: String,
     val calculation: String,
-    val dataUsed: String,
+    val example: String? = null,
     val sources: List<String>,
 )
 
@@ -129,8 +129,36 @@ private fun TransparencyHeroCard(info: TransparencyInfoUiModel) {
             )
             TransparencyTextBlock(title = "Was zeigt dieser Wert?", text = info.meaning)
             TransparencyTextBlock(title = "Woher kommt die Zahl?", text = info.calculation)
-            TransparencyTextBlock(title = "Welche Daten werden verwendet?", text = info.dataUsed)
+            info.example?.let { example ->
+                TransparencyExampleBlock(text = example)
+            }
         }
+    }
+}
+
+@Composable
+private fun TransparencyExampleBlock(text: String) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.2f),
+                shape = RoundedCornerShape(12.dp),
+            )
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Text(
+            text = "Beispiel",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onTertiaryContainer,
+        )
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onTertiaryContainer,
+        )
     }
 }
 

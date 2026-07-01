@@ -6,7 +6,7 @@ category: wirtschaft-und-gesellschaft
 
 title: Windkraft macht Strom unbezahlbar
 myth: „Windkraft macht Strom unbezahlbar.“
-sources: Umweltbundesamt, 2023
+sources: [Umweltbundesamt, 2023](https://stories.umweltbundesamt.de/energiewende-vor-ort)
 
 Erneuerbare Energien senken langfristig die Abhängigkeit von fossilen Brennstoffen und schwankenden Weltmarktpreisen.
 
@@ -16,7 +16,7 @@ Erneuerbare Energien senken langfristig die Abhängigkeit von fossilen Brennstof
 
 title: Nur große Konzerne profitieren
 myth: „Nur große Konzerne profitieren.“
-sources: Umweltbundesamt, 2023
+sources: [Umweltbundesamt, 2023](https://stories.umweltbundesamt.de/energiewende-vor-ort)
 
 Viele Windparks beteiligen Kommunen und Bürger finanziell. Regionen profitieren zudem durch Gewerbesteuern und Arbeitsplätze.
 
@@ -26,6 +26,6 @@ Viele Windparks beteiligen Kommunen und Bürger finanziell. Regionen profitieren
 
 title: Kommunen profitieren nicht
 myth: „Kommunen haben finanziell nichts von Windparks.“
-sources: EEG §6 | Umweltbundesamt, 2023
+sources: EEG §6 | [Umweltbundesamt, 2023](https://stories.umweltbundesamt.de/energiewende-vor-ort)
 
 Kommunen können über Gewerbesteuern, Pachten, regionale Wertschöpfung und Beteiligungsmodelle profitieren. EEG §6 ermöglicht zusätzliche Zahlungen an betroffene Gemeinden.

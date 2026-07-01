@@ -20,8 +20,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-private const val LOCATION_UNAVAILABLE_MESSAGE = "Standort aktuell nicht verfuegbar."
-private const val WIND_FARMS_UNAVAILABLE_MESSAGE = "Windparks koennen aktuell nicht geladen werden."
+private const val LOCATION_UNAVAILABLE_MESSAGE = "Standort aktuell nicht verfügbar."
+private const val WIND_FARMS_UNAVAILABLE_MESSAGE = "Windparks können aktuell nicht geladen werden."
 private const val SEARCH_DEBOUNCE_MS = 300L
 
 @HiltViewModel

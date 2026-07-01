@@ -4,6 +4,7 @@ import android.content.Context
 import com.windnah.core.domain.repository.FactRepository
 import com.windnah.core.model.FactArticle
 import com.windnah.core.model.FactCategory
+import com.windnah.core.model.FactSource
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -91,7 +92,7 @@ class LocalMarkdownFactRepository @Inject constructor(
             myth = myth,
             category = category,
             explanation = explanation,
-            sources = metadata["sources"].orEmpty().parseSources(),
+            sources = parseFactSources(metadata["sources"].orEmpty()),
         )
     }
 
@@ -160,8 +161,23 @@ class LocalMarkdownFactRepository @Inject constructor(
             .removeSurrounding("\"")
             .removeSurrounding("'")
 
-    private fun String.parseSources(): List<String> =
-        split("|", ";")
-            .map { it.trim() }
-            .filter { it.isNotEmpty() }
 }
+
+private val MarkdownLinkPattern = Regex("""^\[([^]]+)]\(([^)]+)\)$""")
+
+internal fun parseFactSources(rawSources: String): List<FactSource> =
+    rawSources
+        .split("|", ";")
+        .map { it.trim() }
+        .filter { it.isNotEmpty() }
+        .map { source ->
+            val markdownLink = MarkdownLinkPattern.matchEntire(source)
+            if (markdownLink != null) {
+                FactSource(
+                    label = markdownLink.groupValues[1].trim(),
+                    url = markdownLink.groupValues[2].trim(),
+                )
+            } else {
+                FactSource(label = source)
+            }
+        }

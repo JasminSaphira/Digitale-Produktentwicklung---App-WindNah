@@ -106,4 +106,69 @@ class GetWindFarmDetailUseCaseTest {
         assertNotNull(detail.energyMetrics.estimatedNoiseLevelDbA)
         assertEquals(2_832.0, detail.energyMetrics.co2SavingsTonnesPerYear, 0.0)
     }
+
+    @Test
+    fun `detail use case does not expose cached current output when weather is unavailable`() = runBlocking {
+        val windFarm = WindFarm(
+            id = "windfarm-test",
+            name = "Testpark",
+            municipality = "Taucha",
+            federalState = "Sachsen",
+            latitude = 51.0,
+            longitude = 12.0,
+            status = WindFarmStatus.IN_BETRIEB,
+            turbineCount = 1,
+            totalCapacityKw = 2_000.0,
+            commissioningYear = 2020,
+        )
+        val turbines = listOf(
+            WindTurbine(
+                id = "t-1",
+                windFarmId = windFarm.id,
+                manufacturer = "Enercon",
+                model = "E-126",
+                ratedPowerKw = 2_000.0,
+                rotorDiameterM = 126.0,
+                hubHeightM = 100.0,
+                commissioningYear = 2020,
+                status = WindFarmStatus.IN_BETRIEB,
+                operator = null,
+            ),
+        )
+        val preview = WindFarmPreview(
+            windFarm = windFarm,
+            energyMetrics = EnergyMetrics(
+                estimatedCurrentOutputKw = 1_234.0,
+                estimatedAnnualProductionKwh = 4_000_000.0,
+                householdsSupplied = 1_142,
+                co2SavingsTonnesPerYear = 1_416.0,
+                localEnergyContributionPercent = null,
+                municipalRevenueEurPerYear = null,
+            ),
+        )
+
+        val useCase = GetWindFarmDetailUseCase(
+            windFarmRepository = object : WindFarmRepository {
+                override fun observeWindFarmPreviews(): Flow<WindFarmPreviewsResult> =
+                    flowOf(WindFarmPreviewsResult(listOf(preview), isStale = false))
+                override fun observeWindFarmDetail(windFarmId: String): Flow<WindFarmDetail?> =
+                    flowOf(WindFarmDetail(windFarm = windFarm, energyMetrics = preview.energyMetrics, turbines = turbines))
+            },
+            weatherRepository = object : WeatherRepository {
+                override suspend fun getCurrentWeather(lat: Double, lon: Double): WeatherData? = null
+            },
+            calculateCurrentOutputUseCase = CalculateCurrentOutputUseCase(),
+            calculateAnnualProductionUseCase = CalculateAnnualProductionUseCase(),
+            calculateHouseholdsSuppliedUseCase = CalculateHouseholdsSuppliedUseCase(),
+            calculateCo2SavingsUseCase = CalculateCo2SavingsUseCase(),
+            calculateLocalEnergyContributionUseCase = CalculateLocalEnergyContributionUseCase(),
+            calculateMunicipalRevenueUseCase = CalculateMunicipalRevenueUseCase(),
+            calculateNoiseEstimateUseCase = CalculateNoiseEstimateUseCase(),
+        )
+
+        val detail = requireNotNull(useCase(windFarm.id).first())
+
+        assertEquals(0.0, detail.energyMetrics.estimatedCurrentOutputKw, 0.0)
+        assertEquals(null, detail.weather)
+    }
 }

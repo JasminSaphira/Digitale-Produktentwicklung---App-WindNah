@@ -8,6 +8,7 @@ import android.graphics.Rect
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -29,7 +30,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Air
 import androidx.compose.material.icons.outlined.ArrowDropDown
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.CloudOff
@@ -74,8 +74,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -85,7 +87,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.graphics.createBitmap
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.windnah.core.designsystem.components.StatusChip
 import com.windnah.core.designsystem.components.StatusFilterChip
 import com.windnah.core.model.EnergyMetrics
 import com.windnah.core.model.WindFarm
@@ -162,10 +163,10 @@ fun DiscoverScreen(
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
     ) { granted ->
-        if (granted) {
-            viewModel.setLocationUsageEnabled(true)
-        }
         viewModel.onEvent(DiscoverUiEvent.LocationPermissionUpdated(granted))
+        if (granted) {
+            viewModel.enableLocationUsageAndRecenter()
+        }
     }
 
     LaunchedEffect(locationProvider) {
@@ -466,6 +467,7 @@ private fun SearchSuggestions(
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp),
                     )
+
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = farm.name,
@@ -970,7 +972,7 @@ private fun SelectedWindFarmSheetContent(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        StatusChip(status = windFarm.status)
+                        WindFarmPreviewStatusChip(status = windFarm.status)
                         Text(
                             text = "${windFarm.turbineCount} Windräder",
                             style = MaterialTheme.typography.bodySmall,
@@ -995,7 +997,7 @@ private fun SelectedWindFarmSheetContent(
                     modifier = Modifier.weight(1f),
                 )
                 MetricCapsule(
-                    title = "CO2 gespart/Jahr",
+                    title = "CO₂ gespart/Jahr",
                     value = "${formatInt(metrics.co2SavingsTonnesPerYear.roundToInt())} t",
                     modifier = Modifier.weight(1f),
                 )
@@ -1014,22 +1016,64 @@ private fun SelectedWindFarmSheetContent(
 
 @Composable
 private fun WindFarmHeroThumbnail(modifier: Modifier = Modifier) {
-    Box(
+    Image(
+        painter = painterResource(R.drawable.windpark_preview),
+        contentDescription = null,
+        contentScale = ContentScale.Crop,
         modifier = modifier
             .size(width = 118.dp, height = 106.dp)
-            .clip(RoundedCornerShape(24.dp))
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(Color(0xFFB8D4A8), Color(0xFF6B9B50)),
-                ),
-            ),
-        contentAlignment = Alignment.Center,
+            .clip(RoundedCornerShape(24.dp)),
+    )
+}
+
+@Composable
+private fun WindFarmPreviewStatusChip(
+    status: WindFarmStatus,
+    modifier: Modifier = Modifier,
+) {
+    val colors = windFarmPreviewStatusColors(status)
+
+    Surface(
+        modifier = modifier.height(24.dp),
+        shape = RoundedCornerShape(16.dp),
+        color = colors.containerColor,
+        contentColor = colors.contentColor,
+        tonalElevation = 0.dp,
     ) {
-        Icon(
-            imageVector = Icons.Outlined.Air,
-            contentDescription = null,
-            tint = Color.White.copy(alpha = 0.9f),
-            modifier = Modifier.size(48.dp),
+        Box(
+            modifier = Modifier.padding(horizontal = 8.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = status.previewLabel,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.contentColor,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+@Composable
+private fun windFarmPreviewStatusColors(status: WindFarmStatus): PreviewStatusColors {
+    val colorScheme = MaterialTheme.colorScheme
+    return when (status) {
+        WindFarmStatus.IN_BETRIEB -> PreviewStatusColors(
+            containerColor = colorScheme.primaryContainer,
+            contentColor = colorScheme.primary,
+        )
+        WindFarmStatus.IN_PLANUNG -> PreviewStatusColors(
+            containerColor = colorScheme.tertiaryContainer,
+            contentColor = colorScheme.onTertiaryContainer,
+        )
+        WindFarmStatus.IN_WARTUNG -> PreviewStatusColors(
+            containerColor = Color(0x52F9CD55),
+            contentColor = Color(0xFF5D4300),
+        )
+        WindFarmStatus.STILLGELEGT -> PreviewStatusColors(
+            containerColor = colorScheme.surfaceVariant,
+            contentColor = colorScheme.onSurfaceVariant,
         )
     }
 }
@@ -1191,14 +1235,17 @@ private fun MetricCapsule(
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier,
+        modifier = modifier.height(84.dp),
         shape = RoundedCornerShape(24.dp),
         color = Color(0x1AC0EFB0),
         tonalElevation = 0.dp,
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 10.dp, vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
         ) {
             Text(
                 text = value,
@@ -1208,6 +1255,7 @@ private fun MetricCapsule(
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
             )
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodySmall,
@@ -1221,6 +1269,19 @@ private fun MetricCapsule(
 }
 
 private data class MapViewState(val recenterToken: Int, val windFarms: List<WindFarmPreview>, val selectedId: String?)
+
+private data class PreviewStatusColors(
+    val containerColor: Color,
+    val contentColor: Color,
+)
+
+private val WindFarmStatus.previewLabel: String
+    get() = when (this) {
+        WindFarmStatus.IN_BETRIEB -> "In Betrieb"
+        WindFarmStatus.IN_WARTUNG -> "In Wartung"
+        WindFarmStatus.IN_PLANUNG -> "In Planung"
+        WindFarmStatus.STILLGELEGT -> "Stillgelegt"
+    }
 
 @Composable
 private fun OpenStreetMapSurface(

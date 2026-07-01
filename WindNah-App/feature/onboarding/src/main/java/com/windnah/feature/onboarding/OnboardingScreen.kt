@@ -90,7 +90,7 @@ fun OnboardingScreen(
 
     val locationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
-        onResult = { viewModel.completeOnboarding() },
+        onResult = { granted -> viewModel.completeOnboarding(locationUsageEnabled = granted) },
     )
 
     Column(
@@ -190,7 +190,7 @@ fun OnboardingScreen(
 
                 // Secondary: skip location, complete onboarding directly
                 Button(
-                    onClick = { viewModel.completeOnboarding() },
+                    onClick = { viewModel.completeOnboarding(locationUsageEnabled = false) },
                     modifier = Modifier.width(241.dp),
                     shape = PillShape,
                     colors = ButtonDefaults.buttonColors(

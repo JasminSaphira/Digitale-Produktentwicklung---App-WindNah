@@ -143,13 +143,13 @@ private fun RegistrationHeader(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        FilledTonalIconButton(
+       IconButton(
             onClick = onNavigateBack,
             modifier = Modifier.size(42.dp),
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                contentDescription = "Zur\u00fcck",
+                contentDescription = "Zurück",
             )
         }
         Spacer(modifier = Modifier.width(20.dp))

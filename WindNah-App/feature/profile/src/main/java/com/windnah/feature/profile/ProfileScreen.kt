@@ -1,7 +1,13 @@
 package com.windnah.feature.profile
 
 import android.Manifest
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -99,7 +105,10 @@ fun ProfileScreen(
     val showLiveOutputMetric by viewModel.showLiveOutputMetric.collectAsStateWithLifecycle()
     val showCo2SavingsMetric by viewModel.showCo2SavingsMetric.collectAsStateWithLifecycle()
     val showHouseholdsMetric by viewModel.showHouseholdsMetric.collectAsStateWithLifecycle()
+    val activity = remember(context) { context.findActivity() }
     var showLoginSheet by remember { mutableStateOf(false) }
+    var showLocationSettingsSheet by remember { mutableStateOf(false) }
+    var hasRequestedLocationPermissionFromProfile by remember { mutableStateOf(false) }
 
     fun hasLocationPermission(): Boolean =
         ContextCompat.checkSelfPermission(
@@ -111,6 +120,8 @@ fun ProfileScreen(
         contract = ActivityResultContracts.RequestPermission(),
     ) { granted ->
         viewModel.setLocationUsageEnabled(granted)
+        showLocationSettingsSheet = !granted &&
+            activity?.shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_COARSE_LOCATION) == false
     }
 
     LaunchedEffect(isLocationUsageEnabled) {
@@ -125,6 +136,21 @@ fun ProfileScreen(
             onEmailLoginClick = {
                 showLoginSheet = false
                 onLoginClick()
+            },
+        )
+    }
+
+    if (showLocationSettingsSheet) {
+        LocationPermissionBottomSheet(
+            onDismiss = { showLocationSettingsSheet = false },
+            onOpenSettingsClick = {
+                showLocationSettingsSheet = false
+                context.startActivity(
+                    Intent(
+                        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.fromParts("package", context.packageName, null),
+                    ),
+                )
             },
         )
     }
@@ -162,7 +188,7 @@ fun ProfileScreen(
                         icon = Icons.Outlined.LocationOn,
                         title = "Standort",
                         subtitle = if (isLocationUsageEnabled) {
-                            "Windraeder in Ihrer Naehe finden"
+                            "Windräder in Ihrer Nähe finden"
                         } else {
                             "Standortnutzung in WindNah ist deaktiviert"
                         },
@@ -172,8 +198,14 @@ fun ProfileScreen(
                                 viewModel.setLocationUsageEnabled(false)
                             } else if (hasLocationPermission()) {
                                 viewModel.setLocationUsageEnabled(true)
-                            } else {
+                            } else if (
+                                !hasRequestedLocationPermissionFromProfile ||
+                                activity?.shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_COARSE_LOCATION) != false
+                            ) {
+                                hasRequestedLocationPermissionFromProfile = true
                                 locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+                            } else {
+                                showLocationSettingsSheet = true
                             }
                         },
                     )
@@ -787,4 +819,52 @@ private fun LoginBottomSheet(
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LocationPermissionBottomSheet(
+    onDismiss: () -> Unit,
+    onOpenSettingsClick: () -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = "Standort freigeben",
+                style = MaterialTheme.typography.titleLarge,
+            )
+            Text(
+                text = "Der Standortzugriff wurde in Android blockiert. Du kannst ihn in den App-Einstellungen wieder freigeben.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(
+                onClick = onOpenSettingsClick,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Icon(Icons.Outlined.LocationOn, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("App-Einstellungen öffnen")
+            }
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Nicht jetzt")
+            }
+        }
+    }
+}
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }

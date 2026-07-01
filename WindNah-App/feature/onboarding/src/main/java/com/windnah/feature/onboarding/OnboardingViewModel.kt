@@ -18,8 +18,9 @@ class OnboardingViewModel @Inject constructor(
     private val _onboardingCompleted = MutableStateFlow(false)
     val onboardingCompleted: StateFlow<Boolean> = _onboardingCompleted.asStateFlow()
 
-    fun completeOnboarding() {
+    fun completeOnboarding(locationUsageEnabled: Boolean) {
         viewModelScope.launch {
+            userPreferencesRepository.setLocationUsageEnabled(locationUsageEnabled)
             userPreferencesRepository.setOnboardingCompleted()
             _onboardingCompleted.value = true
         }
