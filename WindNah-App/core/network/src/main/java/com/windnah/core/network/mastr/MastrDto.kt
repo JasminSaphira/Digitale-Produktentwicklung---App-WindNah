@@ -9,7 +9,7 @@ data class MastrWindUnitDto(
     val breitengrad: Double? = null,
     val laengengrad: Double? = null,
     val nettonennleistungKw: Double? = null,
-    val rotorblattlaengeM: Double? = null,
+    val rotorDiameterM: Double? = null,
     val nabenhoeheM: Double? = null,
     val inbetriebnahmedatum: String? = null,
     val betriebsstatus: String? = null,

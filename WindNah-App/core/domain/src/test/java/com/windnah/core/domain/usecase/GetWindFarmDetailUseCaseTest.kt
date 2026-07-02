@@ -90,13 +90,6 @@ class GetWindFarmDetailUseCaseTest {
                         stationId = "station",
                     )
             },
-            calculateCurrentOutputUseCase = CalculateCurrentOutputUseCase(),
-            calculateAnnualProductionUseCase = CalculateAnnualProductionUseCase(),
-            calculateHouseholdsSuppliedUseCase = CalculateHouseholdsSuppliedUseCase(),
-            calculateCo2SavingsUseCase = CalculateCo2SavingsUseCase(),
-            calculateLocalEnergyContributionUseCase = CalculateLocalEnergyContributionUseCase(),
-            calculateMunicipalRevenueUseCase = CalculateMunicipalRevenueUseCase(),
-            calculateNoiseEstimateUseCase = CalculateNoiseEstimateUseCase(),
         )
 
         val detail = requireNotNull(useCase(windFarm.id).first())
@@ -157,13 +150,6 @@ class GetWindFarmDetailUseCaseTest {
             weatherRepository = object : WeatherRepository {
                 override suspend fun getCurrentWeather(lat: Double, lon: Double): WeatherData? = null
             },
-            calculateCurrentOutputUseCase = CalculateCurrentOutputUseCase(),
-            calculateAnnualProductionUseCase = CalculateAnnualProductionUseCase(),
-            calculateHouseholdsSuppliedUseCase = CalculateHouseholdsSuppliedUseCase(),
-            calculateCo2SavingsUseCase = CalculateCo2SavingsUseCase(),
-            calculateLocalEnergyContributionUseCase = CalculateLocalEnergyContributionUseCase(),
-            calculateMunicipalRevenueUseCase = CalculateMunicipalRevenueUseCase(),
-            calculateNoiseEstimateUseCase = CalculateNoiseEstimateUseCase(),
         )
 
         val detail = requireNotNull(useCase(windFarm.id).first())

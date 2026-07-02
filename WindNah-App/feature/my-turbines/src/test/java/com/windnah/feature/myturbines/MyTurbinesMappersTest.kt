@@ -1,5 +1,8 @@
 package com.windnah.feature.myturbines
 
+import com.windnah.core.common.format.formatCompactNumber
+import com.windnah.core.common.format.formatKilotonnes
+import com.windnah.core.common.format.formatMegawatts
 import com.windnah.core.model.EnergyMetrics
 import com.windnah.core.model.WindFarm
 import com.windnah.core.model.WindFarmPreview
@@ -49,7 +52,7 @@ class MyTurbinesMappersTest {
         assertEquals("1,0k", formatCompactNumber(1_000))
         assertEquals("2,5k", formatCompactNumber(2_500))
         assertEquals("1,2", formatKilotonnes(1_234.0))
-        assertEquals("3,4 MW", formatMegawatts(3_450.0))
+        assertEquals("3,5 MW", formatMegawatts(3_450.0))
     }
 
     @Test
@@ -93,8 +96,12 @@ class MyTurbinesMappersTest {
                 commissioningYear = 2020,
             ),
             energyMetrics = EnergyMetrics(
+                estimatedCurrentOutputKw = 0.0,
+                estimatedAnnualProductionKwh = 5_000_000.0,
                 householdsSupplied = 1_400,
                 co2SavingsTonnesPerYear = 1_500.0,
+                localEnergyContributionPercent = null,
+                municipalRevenueEurPerYear = null,
             ),
         )
 }

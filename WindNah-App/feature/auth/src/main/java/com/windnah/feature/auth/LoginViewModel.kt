@@ -98,11 +98,4 @@ class LoginViewModel @Inject constructor(
             }
         }
     }
-
-    @Suppress("unused")
-    private fun showAuthFailure(reason: AuthFailureReason) {
-        _uiState.update { state ->
-            state.copy(authErrorMessage = reason.toFriendlyMessage())
-        }
-    }
 }

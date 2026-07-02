@@ -36,7 +36,6 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.AccountCircle
-import androidx.compose.material.icons.outlined.Air
 import androidx.compose.material.icons.outlined.CheckBox
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Eco
@@ -277,7 +276,7 @@ fun ProfileScreen(
                 ProfileSection(title = "Datenansicht anpassen") {
                     ProfileSwitchRow(
                         title = "Live-Stromproduktion",
-                        subtitle = "Aktueller Output und Kapazitaet",
+                        subtitle = "Aktueller Output und Kapazität",
                         checked = showLiveOutputMetric,
                         onCheckedChange = viewModel::setShowLiveOutputMetric,
                     )
@@ -303,7 +302,7 @@ fun ProfileScreen(
                     ProfileActionRow(
                         icon = Icons.Outlined.Security,
                         title = "Datenschutz",
-                        subtitle = "Datenschutzerklaerung & Einstellungen",
+                        subtitle = "Datenschutzerklärung & Einstellungen",
                         onClick = {},
                     )
                     SectionDivider()
@@ -316,7 +315,7 @@ fun ProfileScreen(
                     SectionDivider()
                     ProfileActionRow(
                         icon = Icons.Outlined.Info,
-                        title = "Ueber diese App",
+                        title = "Über diese App",
                         subtitle = "Version 1.2.0 · Mai 2026",
                         onClick = {},
                     )
@@ -324,7 +323,7 @@ fun ProfileScreen(
                     ProfileActionRow(
                         icon = Icons.AutoMirrored.Outlined.HelpOutline,
                         title = "Hilfe & Support",
-                        subtitle = "Haeufige Fragen & Kontakt",
+                        subtitle = "Häufige Fragen & Kontakt",
                         onClick = {},
                     )
                     SectionDivider()
@@ -486,91 +485,6 @@ private fun ProfileStat(value: String, label: String) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurface,
         )
-    }
-}
-
-@Composable
-private fun AppInfoCard() {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-           containerColor = MaterialTheme.colorScheme.secondary
-        ),
-        shape = RoundedCornerShape(24.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-    ) {
-        Column(
-            modifier = Modifier.padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Box(
-                    modifier = Modifier.size(56.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Air,
-                        contentDescription = "WindNah Logo",
-                        tint = MaterialTheme.colorScheme.onSecondary,
-                        modifier = Modifier.size(36.dp),
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(16.dp))
-
-                Column {
-                    Text(
-                        text = "WindNah",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSecondary,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        text = "Version 1.2.0 · Mai 2026",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSecondary.copy(alpha = 0.78f),
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
-            }
-
-            Text(
-                text = "HERAUSGEGEBEN VON",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSecondary.copy(alpha = 0.72f),
-                fontWeight = FontWeight.Bold,
-            )
-
-            Column(
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    text = "Umweltbundesamt (UBA)",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSecondary,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    text = "Universität Leipzig",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSecondary,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-
-            HorizontalDivider(
-                color = Color.White.copy(alpha = 0.22f),
-            )
-
-            Text(
-                text = "Diese App verfolgt keine kommerziellen Interessen. Ziel ist die neutrale, faktbasierte Information der Öffentlichkeit über Windenergie in Deutschland.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.94f),
-                fontWeight = FontWeight.Medium,
-            )
-        }
     }
 }
 
@@ -766,7 +680,7 @@ private fun PrivacyNoticeCard() {
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    text = "Diese App erhebt keine persoenlichen Daten ohne Ihre Zustimmung. Umfragedaten werden anonym und aggregiert gespeichert.",
+                    text = "Diese App erhebt keine persönlichen Daten ohne Ihre Zustimmung. Umfragedaten werden anonym und aggregiert gespeichert.",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color(0xFF1E4D51),
                 )
@@ -994,7 +908,7 @@ private fun LoginBottomSheet(
                 style = MaterialTheme.typography.titleLarge,
             )
             Text(
-                text = "Melde dich an, um Windparks zu speichern und auf allen Geraeten zu synchronisieren.",
+                text = "Melde dich an, um Windparks zu speichern und auf allen Geräten zu synchronisieren.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

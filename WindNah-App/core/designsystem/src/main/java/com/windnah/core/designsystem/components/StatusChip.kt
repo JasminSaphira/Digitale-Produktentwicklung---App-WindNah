@@ -32,14 +32,6 @@ private fun activeStatusColors(status: WindFarmStatus): StatusColors = when (sta
     WindFarmStatus.STILLGELEGT -> StatusColors(Color(0xFF9E9E9E), Color(0xFF1F1F1F))
 }
 
-private val WindFarmStatus.label: String
-    get() = when (this) {
-        WindFarmStatus.IN_BETRIEB -> "In Betrieb"
-        WindFarmStatus.IN_WARTUNG -> "In Wartung"
-        WindFarmStatus.IN_PLANUNG -> "In Planung"
-        WindFarmStatus.STILLGELEGT -> "Stillgelegt"
-    }
-
 @Composable
 fun StatusChip(
     status: WindFarmStatus,

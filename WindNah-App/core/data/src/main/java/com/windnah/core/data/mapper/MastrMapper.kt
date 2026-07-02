@@ -1,7 +1,6 @@
 package com.windnah.core.data.mapper
 
 import com.windnah.core.domain.usecase.WindFarmMetricCalculator
-import com.windnah.core.model.EnergyMetrics
 import com.windnah.core.model.WindFarm
 import com.windnah.core.model.WindFarmPreview
 import com.windnah.core.model.WindFarmStatus
@@ -22,8 +21,7 @@ fun List<MastrWindUnitDto>.unitsForWindFarmId(windFarmId: String): List<MastrWin
     groupByWindPark().values.firstOrNull { units -> units.toWindFarmId() == windFarmId } ?: emptyList()
 
 private fun List<MastrWindUnitDto>.toWindFarmId(): String {
-    val avgLat = mapNotNull { it.breitengrad }.average().let { if (it.isNaN()) 0.0 else it }
-    val avgLon = mapNotNull { it.laengengrad }.average().let { if (it.isNaN()) 0.0 else it }
+    val (avgLat, avgLon) = averageCoords()
     val firstUnit = first()
     return buildWindFarmId(
         name = firstUnit.windparkName ?: "${firstUnit.gemeinde}_${firstUnit.postleitzahl}",
@@ -31,6 +29,13 @@ private fun List<MastrWindUnitDto>.toWindFarmId(): String {
         lat = avgLat,
         lon = avgLon,
     )
+}
+
+/** Mean of the units' coordinates, treating missing/empty values as 0.0. */
+private fun List<MastrWindUnitDto>.averageCoords(): Pair<Double, Double> {
+    val avgLat = mapNotNull { it.breitengrad }.average().let { if (it.isNaN()) 0.0 else it }
+    val avgLon = mapNotNull { it.laengengrad }.average().let { if (it.isNaN()) 0.0 else it }
+    return avgLat to avgLon
 }
 
 fun List<MastrWindUnitDto>.toWindTurbines(windFarmId: String): List<WindTurbine> =
@@ -41,7 +46,7 @@ fun List<MastrWindUnitDto>.toWindTurbines(windFarmId: String): List<WindTurbine>
             manufacturer = dto.hersteller,
             model = dto.typenbezeichnung,
             ratedPowerKw = dto.nettonennleistungKw ?: 0.0,
-            rotorDiameterM = dto.rotorblattlaengeM?.let { it * 2 }, // blade length × 2 = diameter
+            rotorDiameterM = dto.rotorDiameterM,
             hubHeightM = dto.nabenhoeheM,
             commissioningYear = dto.inbetriebnahmedatum?.take(4)?.toIntOrNull(),
             status = dto.betriebsstatus.toWindFarmStatus(),
@@ -64,7 +69,7 @@ private fun List<MastrWindUnitDto>.groupByWindPark(): Map<String, List<MastrWind
  * the same municipality stay separate instead of collapsing into one fake park.
  */
 private fun MastrWindUnitDto.windParkGroupKey(): String {
-    windparkName?.normalizeWindparkName()?.let { return "name_$it" }
+    windparkName?.normalizeForId()?.let { return "name_$it" }
 
     val lat = breitengrad
     val lon = laengengrad
@@ -79,21 +84,14 @@ private fun MastrWindUnitDto.windParkGroupKey(): String {
 }
 
 private fun List<MastrWindUnitDto>.toWindFarmPreview(): WindFarmPreview {
-    val avgLat = mapNotNull { it.breitengrad }.average().let { if (it.isNaN()) 0.0 else it }
-    val avgLon = mapNotNull { it.laengengrad }.average().let { if (it.isNaN()) 0.0 else it }
+    val (avgLat, avgLon) = averageCoords()
     val totalKw = sumOf { it.nettonennleistungKw ?: 0.0 }
     val firstUnit = first()
     val status = map { it.betriebsstatus.toWindFarmStatus() }.aggregateStatus()
     val commYear = mapNotNull { it.inbetriebnahmedatum?.take(4)?.toIntOrNull() }.minOrNull()
 
-    val windFarmId = toWindFarmId()
-
-    // Annual production estimate: totalKw × 2000 full-load hours (German onshore average)
-    val annualKwh = totalKw * 2_000.0
-    val householdsSupplied = (annualKwh / 3_500.0).toInt()
-    val co2Savings = annualKwh * (363.0 - 9.0) / 1_000_000.0
     val windFarm = WindFarm(
-        id = windFarmId,
+        id = toWindFarmId(),
         name = firstUnit.windparkName?.trim() ?: "${firstUnit.gemeinde}, ${firstUnit.bundesland}",
         municipality = firstUnit.gemeinde?.trim() ?: "",
         federalState = firstUnit.bundesland?.trim() ?: "",
@@ -106,15 +104,15 @@ private fun List<MastrWindUnitDto>.toWindFarmPreview(): WindFarmPreview {
         postalCode = firstUnit.postleitzahl,
     )
 
+    // Live current output is filled in later from DWD wind; here (no weather, no turbine detail)
+    // buildEnergyMetrics produces the same annual/households/CO₂/local/municipal estimates the
+    // detail view uses, keeping the calculation constants in one place (WindFarmMetricCalculator).
     return WindFarmPreview(
         windFarm = windFarm,
-        energyMetrics = EnergyMetrics(
-            estimatedCurrentOutputKw = 0.0, // filled in by DWD-based calculation
-            estimatedAnnualProductionKwh = annualKwh,
-            householdsSupplied = householdsSupplied,
-            co2SavingsTonnesPerYear = co2Savings,
-            localEnergyContributionPercent = WindFarmMetricCalculator.calculateLocalEnergyContributionPercent(windFarm),
-            municipalRevenueEurPerYear = WindFarmMetricCalculator.calculateMunicipalRevenueEur(annualKwh),
+        energyMetrics = WindFarmMetricCalculator.buildEnergyMetrics(
+            windFarm = windFarm,
+            turbines = emptyList(),
+            weather = null,
         ),
     )
 }
@@ -133,11 +131,14 @@ private fun List<WindFarmStatus>.aggregateStatus(): WindFarmStatus = when {
     else -> WindFarmStatus.IN_BETRIEB
 }
 
-private fun String.normalizeWindparkName(): String =
-    lowercase().trim().replace(Regex("[^a-z0-9äöüß]"), "_")
+private val NON_ID_CHARS = Regex("[^a-z0-9äöüß]")
+
+/** Lowercases and replaces every non-alphanumeric (German-aware) char with "_" for stable ids. */
+private fun String.normalizeForId(): String =
+    lowercase().trim().replace(NON_ID_CHARS, "_")
 
 fun buildWindFarmId(name: String, federalState: String, lat: Double, lon: Double): String {
-    val normalizedName = name.lowercase().trim().replace(Regex("[^a-z0-9äöüß]"), "_")
+    val normalizedName = name.normalizeForId()
     val normalizedState = federalState.lowercase().trim().replace(" ", "_")
     val latStr = String.format("%.2f", lat).replace(".", "")
     val lonStr = String.format("%.2f", lon).replace(".", "")

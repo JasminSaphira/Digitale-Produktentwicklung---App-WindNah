@@ -2,7 +2,6 @@ package com.windnah.core.domain.usecase
 
 import com.windnah.core.domain.repository.WeatherRepository
 import com.windnah.core.domain.repository.WindFarmRepository
-import com.windnah.core.model.EnergyMetrics
 import com.windnah.core.model.WindFarmDetail
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -13,13 +12,6 @@ import javax.inject.Inject
 class GetWindFarmDetailUseCase @Inject constructor(
     private val windFarmRepository: WindFarmRepository,
     private val weatherRepository: WeatherRepository,
-    private val calculateCurrentOutputUseCase: CalculateCurrentOutputUseCase,
-    private val calculateAnnualProductionUseCase: CalculateAnnualProductionUseCase,
-    private val calculateHouseholdsSuppliedUseCase: CalculateHouseholdsSuppliedUseCase,
-    private val calculateCo2SavingsUseCase: CalculateCo2SavingsUseCase,
-    private val calculateLocalEnergyContributionUseCase: CalculateLocalEnergyContributionUseCase,
-    private val calculateMunicipalRevenueUseCase: CalculateMunicipalRevenueUseCase,
-    private val calculateNoiseEstimateUseCase: CalculateNoiseEstimateUseCase,
 ) {
     operator fun invoke(windFarmId: String): Flow<WindFarmDetail?> =
         windFarmRepository.observeWindFarmDetail(windFarmId).map { detail ->
@@ -34,28 +26,12 @@ class GetWindFarmDetailUseCase @Inject constructor(
                     }.getOrNull()
                 }
                 val weather = weatherDeferred.await()
-                val annualProductionKwh = calculateAnnualProductionUseCase(detail.windFarm.totalCapacityKw)
-                val currentOutputKw = weather?.let {
-                    calculateCurrentOutputUseCase(it, detail.turbines, detail.windFarm.totalCapacityKw)
-                } ?: 0.0
-                val noiseEstimateDbA = weather?.let {
-                    calculateNoiseEstimateUseCase(
-                        weather = it,
-                        turbines = detail.turbines,
-                        installedCapacityKw = detail.windFarm.totalCapacityKw,
-                        currentOutputKw = currentOutputKw,
-                    )
-                }
 
                 detail.copy(
-                    energyMetrics = detail.energyMetrics.copy(
-                        estimatedCurrentOutputKw = currentOutputKw,
-                        estimatedAnnualProductionKwh = annualProductionKwh,
-                        householdsSupplied = calculateHouseholdsSuppliedUseCase(annualProductionKwh),
-                        co2SavingsTonnesPerYear = calculateCo2SavingsUseCase(annualProductionKwh),
-                        localEnergyContributionPercent = calculateLocalEnergyContributionUseCase(detail.windFarm),
-                        municipalRevenueEurPerYear = calculateMunicipalRevenueUseCase(annualProductionKwh),
-                        estimatedNoiseLevelDbA = noiseEstimateDbA,
+                    energyMetrics = WindFarmMetricCalculator.buildEnergyMetrics(
+                        windFarm = detail.windFarm,
+                        turbines = detail.turbines,
+                        weather = weather,
                     ),
                     weather = weather,
                 )

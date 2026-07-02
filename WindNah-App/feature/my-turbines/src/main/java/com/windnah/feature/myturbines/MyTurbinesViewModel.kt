@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-private const val MY_TURBINES_ERROR_MESSAGE = "Windparks koennen aktuell nicht geladen werden."
+private const val MY_TURBINES_ERROR_MESSAGE = "Windparks können aktuell nicht geladen werden."
 
 @HiltViewModel
 class MyTurbinesViewModel @Inject constructor(

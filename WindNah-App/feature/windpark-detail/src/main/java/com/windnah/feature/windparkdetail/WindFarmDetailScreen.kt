@@ -88,8 +88,13 @@ import com.windnah.core.model.WindFarm
 import com.windnah.core.model.WindFarmDetail
 import com.windnah.core.model.WindFarmStatus
 import com.windnah.core.model.WindTurbine
-import com.windnah.core.domain.usecase.WindFarmMetricTransparency
-import kotlin.math.log10
+import com.windnah.core.common.format.formatDecimal
+import com.windnah.core.common.format.formatEur
+import com.windnah.core.common.format.formatGigawattHours
+import com.windnah.core.common.format.formatInt
+import com.windnah.core.common.format.formatMegawattHours
+import com.windnah.core.common.format.formatMegawatts
+import com.windnah.core.domain.usecase.WindFarmMetricCalculator
 import kotlin.math.roundToInt
 
 @Composable
@@ -388,7 +393,7 @@ private fun WindFarmHeader(
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = "Zurueck",
+                    contentDescription = "Zurück",
                     tint = Color.White,
                     modifier = Modifier.size(18.dp),
                 )
@@ -577,7 +582,7 @@ private fun OutputCard(
             ) {
                 Column {
                     Text(
-                        text = if (hasLiveOutput) formatMwLarge(metrics.estimatedCurrentOutputKw) else "Keine Live-Daten",
+                        text = if (hasLiveOutput) formatMegawatts(metrics.estimatedCurrentOutputKw) else "Keine Live-Daten",
                         fontSize = if (hasLiveOutput) 30.sp else 22.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF191D17),
@@ -708,8 +713,8 @@ private fun MetricsGrid(
                 metric = WindFarmDetailMetric.AnnualProduction,
                 icon = Icons.Outlined.Bolt,
                 label = "Stromproduktion/\nJahr",
-                value = "${formatGwh(metrics.estimatedAnnualProductionKwh)} GWh",
-                subtext = "${formatMwh(metrics.estimatedAnnualProductionKwh)} MWh",
+                value = "${formatGigawattHours(metrics.estimatedAnnualProductionKwh)} GWh",
+                subtext = "${formatMegawattHours(metrics.estimatedAnnualProductionKwh)} MWh",
             ),
         )
         if (metricVisibility.showHouseholds) {
@@ -718,7 +723,7 @@ private fun MetricsGrid(
                     metric = WindFarmDetailMetric.Households,
                     icon = Icons.Outlined.Home,
                     label = "Haushalte\nversorgt",
-                    value = formatNumber(metrics.householdsSupplied),
+                    value = formatInt(metrics.householdsSupplied),
                     subtext = "Haushalte/Jahr",
                 ),
             )
@@ -729,8 +734,8 @@ private fun MetricsGrid(
                     metric = WindFarmDetailMetric.Co2Savings,
                     icon = Icons.Outlined.Eco,
                     label = "CO2 gespart",
-                    value = "${formatNumber(metrics.co2SavingsTonnesPerYear.roundToInt())} t",
-                    subtext = "ca. ${formatNumber((metrics.co2SavingsTonnesPerYear / 4.7).roundToInt())} Pkw, die ein Jahr lang nicht fahren",
+                    value = "${formatInt(metrics.co2SavingsTonnesPerYear.roundToInt())} t",
+                    subtext = "ca. ${formatInt((metrics.co2SavingsTonnesPerYear / 4.7).roundToInt())} Pkw, die ein Jahr lang nicht fahren",
                 ),
             )
         }
@@ -913,7 +918,7 @@ private fun NoiseEstimateCard(
     var selectedDistanceIndex by remember { mutableIntStateOf(DEFAULT_NOISE_DISTANCE_INDEX) }
     val selectedDistanceM = noiseSimulationDistancesM[selectedDistanceIndex]
     val estimatedNoiseDbA = metrics.estimatedNoiseLevelDbA?.let {
-        estimateNoiseForDistance(referenceNoiseDbA = it, distanceM = selectedDistanceM)
+        WindFarmMetricCalculator.estimateNoiseForDistanceDbA(referenceNoiseDbA = it, distanceM = selectedDistanceM)
     }
     val displayedNoiseDbA = estimatedNoiseDbA?.roundToInt()
     val comparisonText = estimatedNoiseDbA?.let(::noiseComparisonText)
@@ -958,7 +963,7 @@ private fun NoiseEstimateCard(
                     )
                 }
                 MetricInfoButton(
-                    contentDescription = "Transparenz zur Laermschaetzung anzeigen",
+                    contentDescription = "Transparenz zur Lärmschätzung anzeigen",
                     tint = Color(0xFF53634E),
                     onClick = onInfoClick,
                 )
@@ -1022,62 +1027,6 @@ private fun NoiseEstimateCard(
 }
 
 @Composable
-private fun TransparencySummaryCard() {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Text(
-                text = "Transparenz",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF191D17),
-            )
-            Text(
-                text = "Jede Kennzahl ist ein geschatzter Wert mit klarer Formel und Quelle.",
-                fontSize = 11.sp,
-                color = Color(0xFF73796E),
-                lineHeight = 14.sp,
-            )
-            TransparencyRow("Aktueller Output", WindFarmMetricTransparency.CURRENT_OUTPUT)
-            TransparencyRow("Jahresproduktion", WindFarmMetricTransparency.ANNUAL_PRODUCTION)
-            TransparencyRow("Haushalte", WindFarmMetricTransparency.HOUSEHOLDS_SUPPLIED)
-            TransparencyRow("CO2", WindFarmMetricTransparency.CO2_SAVINGS)
-            TransparencyRow("Lokaler Anteil", WindFarmMetricTransparency.LOCAL_ENERGY)
-            TransparencyRow("Kommunale Einnahmen", WindFarmMetricTransparency.MUNICIPAL_REVENUE)
-            TransparencyRow("Windstärke", WindFarmMetricTransparency.WIND_SPEED)
-        }
-    }
-}
-
-@Composable
-private fun TransparencyRow(
-    title: String,
-    note: String,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(
-            text = title,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Color(0xFF3F6836),
-        )
-        Text(
-            text = note,
-            fontSize = 10.sp,
-            color = Color(0xFF73796E),
-            lineHeight = 13.sp,
-        )
-    }
-}
-
-@Composable
 private fun MetricInfoButton(
     contentDescription: String,
     tint: Color,
@@ -1098,18 +1047,18 @@ private fun MetricInfoButton(
 
 @Composable
 private fun StatusChip(status: WindFarmStatus) {
-    val (bg, fg, label) = when (status) {
-        WindFarmStatus.IN_BETRIEB -> Triple(Color(0xFFC0EFB0), Color(0xFF3F6836), "In Betrieb")
-        WindFarmStatus.IN_WARTUNG -> Triple(Color(0xFFF9CD55), Color(0xFF5A4000), "In Wartung")
-        WindFarmStatus.IN_PLANUNG -> Triple(Color(0xFF386569), Color.White, "In Planung")
-        WindFarmStatus.STILLGELEGT -> Triple(Color(0xFFD8DBD2), Color(0xFF3C4B37), "Stillgelegt")
+    val (bg, fg) = when (status) {
+        WindFarmStatus.IN_BETRIEB -> Color(0xFFC0EFB0) to Color(0xFF3F6836)
+        WindFarmStatus.IN_WARTUNG -> Color(0xFFF9CD55) to Color(0xFF5A4000)
+        WindFarmStatus.IN_PLANUNG -> Color(0xFF386569) to Color.White
+        WindFarmStatus.STILLGELEGT -> Color(0xFFD8DBD2) to Color(0xFF3C4B37)
     }
     Box(
         modifier = Modifier
             .background(bg, RoundedCornerShape(16.dp))
             .padding(horizontal = 8.dp, vertical = 4.dp),
     ) {
-        Text(text = label, color = fg, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Text(text = status.label, color = fg, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -1184,7 +1133,7 @@ private fun GroessenvergleichCard(
             }
 
             MetricInfoButton(
-                contentDescription = "Transparenz zum Groessenvergleich anzeigen",
+                contentDescription = "Transparenz zum Größenvergleich anzeigen",
                 tint = Color(0xFF5B6654),
                 onClick = onInfoClick,
             )
@@ -1628,27 +1577,8 @@ private fun TurbineSpecRow(value: String, label: String) {
     }
 }
 
-private fun formatNumber(n: Int): String {
-    return String.format("%,d", n).replace(',', '.')
-}
-
-private fun formatDecimal(value: Double, decimals: Int): String {
-    val formatted = String.format("%.${decimals}f", value)
-    return formatted.replace('.', ',')
-}
-
-private fun formatMwLarge(kw: Double): String =
-    String.format("%.1f", kw / 1000.0).replace('.', ',') + " MW"
-
 private val noiseSimulationDistancesM = listOf(100, 250, 500, 1000)
 private const val DEFAULT_NOISE_DISTANCE_INDEX = 2
-private const val NOISE_REFERENCE_DISTANCE_M = 500.0
-private const val NOISE_MIN_DB = 30.0
-private const val NOISE_MAX_DB = 90.0
-
-private fun estimateNoiseForDistance(referenceNoiseDbA: Double, distanceM: Int): Double =
-    (referenceNoiseDbA + 20.0 * log10(NOISE_REFERENCE_DISTANCE_M / distanceM.toDouble()))
-        .coerceIn(NOISE_MIN_DB, NOISE_MAX_DB)
 
 private fun noiseComparisonText(noiseDbA: Double): String {
     val roundedNoiseDbA = noiseDbA.roundToInt()
@@ -1659,15 +1589,6 @@ private fun noiseComparisonText(noiseDbA: Double): String {
     }
     return "Etwa $roundedNoiseDbA dB(A), vergleichbar mit $comparison."
 }
-
-private fun formatGwh(kwh: Double): String =
-    String.format("%.1f", kwh / 1_000_000.0).replace('.', ',')
-
-private fun formatMwh(kwh: Double): String =
-    formatNumber((kwh / 1_000.0).roundToInt())
-
-private fun formatEur(value: Int): String =
-    "%,d".format(value).replace(',', '.')
 
 private fun windClassification(ms: Double): String = when {
     ms < 1 -> "Windstille"

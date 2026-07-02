@@ -7,7 +7,6 @@ import com.windnah.core.model.WindFarmStatus
 import com.windnah.core.model.WindTurbine
 import kotlin.math.log10
 import kotlin.math.pow
-import javax.inject.Inject
 
 private const val HELLMANN_EXPONENT = 0.14
 private const val MEASUREMENT_HEIGHT_M = 10.0
@@ -119,6 +118,15 @@ object WindFarmMetricCalculator {
             .coerceIn(NOISE_MIN_DB, NOISE_MAX_DB)
     }
 
+    /**
+     * Extrapolates a reference dB(A) value (given at [NOISE_REFERENCE_DISTANCE_M]) to another
+     * distance using inverse-distance sound attenuation (20·log10(ref/distance)), clamped to the
+     * plausible [NOISE_MIN_DB]..[NOISE_MAX_DB] range. Used by the detail-screen distance slider.
+     */
+    fun estimateNoiseForDistanceDbA(referenceNoiseDbA: Double, distanceM: Int): Double =
+        (referenceNoiseDbA + 20.0 * log10(NOISE_REFERENCE_DISTANCE_M / distanceM.toDouble()))
+            .coerceIn(NOISE_MIN_DB, NOISE_MAX_DB)
+
     fun buildEnergyMetrics(
         windFarm: WindFarm,
         turbines: List<WindTurbine>,
@@ -190,60 +198,3 @@ object WindFarmMetricCalculator {
         )
 }
 
-object WindFarmMetricTransparency {
-    const val CURRENT_OUTPUT = "Geschatzter Wert aus DWD-Wind und MaStR-Turbinenparametern. Aktualisierung: alle 15 Minuten."
-    const val ANNUAL_PRODUCTION = "Berechnet mit 2.000 Volllaststunden auf Basis der installierten Leistung. Aktualisierung: taglich."
-    const val HOUSEHOLDS_SUPPLIED = "Umrechnung mit 3.500 kWh pro Haushalt und Jahr. Aktualisierung: taglich."
-    const val CO2_SAVINGS = "UBA-Strommix von 363 g/kWh gegen 9 g/kWh Wind-Lebenszyklus. Aktualisierung: taglich."
-    const val LOCAL_ENERGY = "Geschatzte lokale Nachfrage auf Basis von 1.900 Vollaststunden und einem Gemeinde-Verbrauchsmodell. Aktualisierung: monatlich."
-    const val MUNICIPAL_REVENUE = "EEG-§6-Richtwert von 0,2 ct/kWh auf die Jahresproduktion. Aktualisierung: monatlich."
-    const val WIND_SPEED = "DWD/BrightSky-Livedaten. Aktualisierung: alle 15 Minuten."
-
-}
-
-class CalculateCurrentOutputUseCase @Inject constructor() {
-    operator fun invoke(
-        weather: WeatherData,
-        turbines: List<WindTurbine>,
-        installedCapacityKw: Double,
-    ): Double = WindFarmMetricCalculator.calculateCurrentOutput(weather, turbines, installedCapacityKw)
-}
-
-class CalculateAnnualProductionUseCase @Inject constructor() {
-    operator fun invoke(installedCapacityKw: Double): Double =
-        WindFarmMetricCalculator.calculateAnnualProductionKwh(installedCapacityKw)
-}
-
-class CalculateHouseholdsSuppliedUseCase @Inject constructor() {
-    operator fun invoke(annualProductionKwh: Double): Int =
-        WindFarmMetricCalculator.calculateHouseholdsSupplied(annualProductionKwh)
-}
-
-class CalculateCo2SavingsUseCase @Inject constructor() {
-    operator fun invoke(annualProductionKwh: Double): Double =
-        WindFarmMetricCalculator.calculateCo2SavingsTonnes(annualProductionKwh)
-}
-
-class CalculateLocalEnergyContributionUseCase @Inject constructor() {
-    operator fun invoke(windFarm: WindFarm): Double =
-        WindFarmMetricCalculator.calculateLocalEnergyContributionPercent(windFarm)
-}
-
-class CalculateMunicipalRevenueUseCase @Inject constructor() {
-    operator fun invoke(annualProductionKwh: Double): Double =
-        WindFarmMetricCalculator.calculateMunicipalRevenueEur(annualProductionKwh)
-}
-
-class CalculateNoiseEstimateUseCase @Inject constructor() {
-    operator fun invoke(
-        weather: WeatherData,
-        turbines: List<WindTurbine>,
-        installedCapacityKw: Double,
-        currentOutputKw: Double,
-    ): Double? = WindFarmMetricCalculator.calculateNoiseEstimateDbA(
-        weather = weather,
-        turbines = turbines,
-        installedCapacityKw = installedCapacityKw,
-        currentOutputKw = currentOutputKw,
-    )
-}

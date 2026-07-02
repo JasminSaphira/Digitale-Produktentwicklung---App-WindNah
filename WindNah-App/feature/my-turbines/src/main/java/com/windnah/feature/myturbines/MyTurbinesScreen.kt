@@ -613,7 +613,7 @@ private fun MyTurbinesDiscoverButton(
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
-            text = "Neue Windraeder entdecken",
+            text = "Neue Windräder entdecken",
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.SemiBold,
         )

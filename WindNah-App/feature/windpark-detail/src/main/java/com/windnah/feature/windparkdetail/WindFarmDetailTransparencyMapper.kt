@@ -1,5 +1,9 @@
 package com.windnah.feature.windparkdetail
 
+import com.windnah.core.common.format.formatDecimal
+import com.windnah.core.common.format.formatGigawattHours
+import com.windnah.core.common.format.formatInt
+import com.windnah.core.common.format.formatMegawatts
 import com.windnah.core.designsystem.components.TransparencyInfoUiModel
 import com.windnah.core.model.WindFarmDetail
 import kotlin.math.roundToInt
@@ -56,7 +60,7 @@ internal fun WindFarmDetailMetric.toTransparencyInfoUiModel(
 
         WindFarmDetailMetric.Households -> TransparencyInfoUiModel(
             title = "Haushalte versorgt",
-            value = formatNumber(metrics.householdsSupplied),
+            value = formatInt(metrics.householdsSupplied),
             meaning = "Wie viele Haushalte der Windpark mit seinem Jahresstrom theoretisch versorgen könnte – als greifbare Alltagszahl.",
             calculation = "Ein typischer 2-Personen-Haushalt verbraucht laut Statistischem Bundesamt rund 3.500 kWh Strom pro Jahr. Die Jahresproduktion des Parks wird durch diesen Wert geteilt.",
             example = "20.000 MWh ÷ 3,5 MWh = ca. 5.700 Haushalte",
@@ -68,7 +72,7 @@ internal fun WindFarmDetailMetric.toTransparencyInfoUiModel(
 
         WindFarmDetailMetric.Co2Savings -> TransparencyInfoUiModel(
             title = "CO₂-Einsparung",
-            value = "${formatNumber(metrics.co2SavingsTonnesPerYear.roundToInt())} t",
+            value = "${formatInt(metrics.co2SavingsTonnesPerYear.roundToInt())} t",
             meaning = "Wie viel CO₂ rechnerisch eingespart wird – verglichen mit dem Strom, der sonst aus dem normalen Stromnetz käme.",
             calculation = "Normaler Netzstrom kommt zu einem großen Teil aus Gas- und Kohlekraftwerken und erzeugt dabei CO₂. Windstrom dagegen so gut wie keins. Die Differenz zwischen beiden Werten wird mit der Jahresproduktion multipliziert – so entsteht die eingesparte CO₂-Menge.",
             example = "Netzstrom erzeugt ~363 g CO₂ pro kWh, Windstrom ~9 g → Ersparnis von ~354 g pro kWh × Jahresproduktion",
@@ -91,7 +95,7 @@ internal fun WindFarmDetailMetric.toTransparencyInfoUiModel(
 
         WindFarmDetailMetric.MunicipalRevenue -> TransparencyInfoUiModel(
             title = "Kommunale Einnahmen",
-            value = metrics.municipalRevenueEurPerYear?.let { "${formatNumber(it.roundToInt())} €" } ?: "Nicht verfügbar",
+            value = metrics.municipalRevenueEurPerYear?.let { "${formatInt(it.roundToInt())} €" } ?: "Nicht verfügbar",
             meaning = "Wie viel Geld die Gemeinde durch den Windpark jährlich einnehmen könnte – als grobe Orientierung.",
             calculation = "Seit 2023 dürfen Kommunen per Gesetz (EEG) an Windparks auf ihrem Gebiet finanziell beteiligt werden. Die Jahresproduktion des Parks wird mit dem gesetzlich festgelegten Richtwert pro Kilowattstunde multipliziert.",
             example = "20.000 MWh × 0,2 ct/kWh = ca. 40.000 € pro Jahr für die Kommune",
@@ -137,15 +141,3 @@ private fun averageComparisonHeight(detail: WindFarmDetail): Double? {
 
     return heights.takeIf { it.isNotEmpty() }?.average()
 }
-
-private fun formatMegawatts(kw: Double): String =
-    "${formatDecimal(kw / 1_000.0, 1)} MW"
-
-private fun formatGigawattHours(kwh: Double): String =
-    formatDecimal(kwh / 1_000_000.0, 1)
-
-private fun formatDecimal(value: Double, decimals: Int): String =
-    String.format("%.${decimals}f", value).replace('.', ',')
-
-private fun formatNumber(value: Int): String =
-    String.format("%,d", value).replace(',', '.')

@@ -31,7 +31,7 @@ data class MapRecenterRequest(
 data class FederalStateCenter(val latitude: Double, val longitude: Double, val zoom: Double)
 
 val FederalStateCenters: Map<String, FederalStateCenter> = mapOf(
-    "Baden-Wuerttemberg" to FederalStateCenter(48.6616, 9.3501, 7.5),
+    "Baden-Württemberg" to FederalStateCenter(48.6616, 9.3501, 7.5),
     "Bayern" to FederalStateCenter(48.9496, 11.3952, 7.2),
     "Berlin" to FederalStateCenter(52.5200, 13.4050, 11.0),
     "Brandenburg" to FederalStateCenter(52.4127, 12.5316, 7.5),
@@ -46,7 +46,7 @@ val FederalStateCenters: Map<String, FederalStateCenter> = mapOf(
     "Sachsen" to FederalStateCenter(51.1045, 13.2017, 8.5),
     "Sachsen-Anhalt" to FederalStateCenter(51.9503, 11.6923, 8.0),
     "Schleswig-Holstein" to FederalStateCenter(54.2194, 9.6961, 8.0),
-    "Thueringen" to FederalStateCenter(50.8987, 11.0299, 8.0),
+    "Thüringen" to FederalStateCenter(50.8987, 11.0299, 8.0),
 )
 
 const val GermanyCenterLat = 51.1657
@@ -54,7 +54,7 @@ const val GermanyCenterLon = 10.4515
 const val GermanyDefaultZoom = 6.0
 
 val GermanFederalStates = listOf(
-    "Baden-Wuerttemberg",
+    "Baden-Württemberg",
     "Bayern",
     "Berlin",
     "Brandenburg",
@@ -69,5 +69,5 @@ val GermanFederalStates = listOf(
     "Sachsen",
     "Sachsen-Anhalt",
     "Schleswig-Holstein",
-    "Thueringen",
+    "Thüringen",
 )

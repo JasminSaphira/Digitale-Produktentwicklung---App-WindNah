@@ -184,7 +184,7 @@ class MastrSoapClient(private val okHttpClient: OkHttpClient) {
             laengengrad = fields["Laengengrad"]?.toDoubleOrNull(),
             nettonennleistungKw = fields["Nettonennleistung"]?.toDoubleOrNull()
                 ?: fields["Bruttoleistung"]?.toDoubleOrNull(),
-            rotorblattlaengeM = fields["Rotordurchmesser"]?.toDoubleOrNull()?.let { it / 2 },
+            rotorDiameterM = fields["Rotordurchmesser"]?.toDoubleOrNull(),
             nabenhoeheM = fields["Nabenhoehe"]?.toDoubleOrNull(),
             inbetriebnahmedatum = fields["Inbetriebnahmedatum"],
             betriebsstatus = fields["EinheitBetriebsstatus"],

@@ -42,6 +42,85 @@ Key features include:
 
 ---
 
+# Getting Started
+
+## Prerequisites
+
+* Android Studio (latest stable version)
+* JDK 11 or higher
+* An Android emulator or physical device (Android 8.0 / API 26 or higher)
+
+## Firebase configuration (required)
+
+The app uses **Firebase Authentication**, so a `google-services.json` file is required to build and run it. This file contains project-specific secrets and is therefore **not included in the repository** (it is listed in `.gitignore`).
+
+Without it, the `:app` module will fail to build with the error:
+
+```text
+File google-services.json is missing. The Google Services Plugin cannot function without it.
+```
+
+To provide the file:
+
+1. Obtain the `google-services.json` for the WindNah Firebase project
+   (either from the project owner, or by creating your own Firebase project
+   with an Android app using the application ID `com.example.windnah`).
+2. Place it in the app module directory:
+
+```text
+WindNah-App/app/google-services.json
+```
+
+> **Note:** This file must be created by you — it is not part of the repository and cannot be shared through Git.
+
+## MaStR API access (Marktstammdatenregister)
+
+The app fetches wind farm data from the official **Marktstammdatenregister (MaStR)** SOAP API. Access requires a personal **API key** and a **Marktakteur number (MaStR number)**.
+
+For the first weeks / testing, a working key is currently **already included in the source** so the app runs out of the box — no setup needed to try it out.
+
+You are encouraged to replace it with **your own key**. The two values live in:
+
+```text
+WindNah-App/core/network/src/main/java/com/windnah/core/network/mastr/MastrSoapClient.kt
+```
+
+as the constants:
+
+```kotlin
+internal const val MASTR_API_KEY = "..."       // your personal API key
+internal const val MASTR_MARKTAKTEUR = "..."   // your Marktakteur (MaStR) number
+```
+
+### How to obtain your own MaStR key
+
+1. Register a free account at the Marktstammdatenregister:
+   https://www.marktstammdatenregister.de
+2. In your account settings, request access to the **MaStR web service (API)**.
+   You will receive a personal **API key** and your **Marktakteur-MaStR-Nummer**
+   (format `SOM…`).
+3. Paste both values into the two constants above and re-run the app.
+
+> The included key is a shared test credential and may be revoked later — for long-term or production use, please use your own.
+
+## Build and run
+
+1. Open the `WindNah-App/` folder directly in Android Studio
+   (open this folder, **not** the repository root).
+2. Let Gradle sync finish. Android Studio generates `local.properties`
+   (the Android SDK path) automatically — it does not need to be committed.
+3. Select a device/emulator and press **Run**.
+
+To build or run the unit tests from the command line:
+
+```text
+cd WindNah-App
+./gradlew assembleDebug
+./gradlew test
+```
+
+---
+
 # Repository Structure
 
 ```text

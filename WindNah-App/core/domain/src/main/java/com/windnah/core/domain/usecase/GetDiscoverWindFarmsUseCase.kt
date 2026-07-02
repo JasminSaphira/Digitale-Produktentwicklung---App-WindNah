@@ -46,7 +46,8 @@ class GetDiscoverWindFarmsUseCase @Inject constructor(
         statuses.isEmpty() || windFarm.status in statuses
 
     private fun WindFarmPreview.matchesFederalState(federalState: String?): Boolean =
-        federalState == null || windFarm.federalState == federalState
+        federalState == null ||
+            windFarm.federalState.normalizeSearchValue() == federalState.normalizeSearchValue()
 
     private fun String.normalizeSearchValue(): String =
         lowercase()

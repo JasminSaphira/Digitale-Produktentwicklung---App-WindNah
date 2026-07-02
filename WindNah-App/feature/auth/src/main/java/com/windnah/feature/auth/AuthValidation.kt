@@ -19,22 +19,6 @@ data class PasswordRequirementUiModel(
     val isMet: Boolean,
 )
 
-enum class AuthFailureReason {
-    InvalidCredentials,
-    AccountNotFound,
-    Network,
-}
-
-internal fun AuthFailureReason.toFriendlyMessage(): String =
-    when (this) {
-        AuthFailureReason.InvalidCredentials ->
-            "E-Mail oder Passwort stimmt nicht. Bitte pr\u00fcfen Sie Ihre Eingaben."
-        AuthFailureReason.AccountNotFound ->
-            "Zu dieser E-Mail-Adresse existiert noch kein Konto. M\u00f6chten Sie sich registrieren?"
-        AuthFailureReason.Network ->
-            "Keine Verbindung. Bitte pr\u00fcfen Sie Ihre Internetverbindung."
-    }
-
 internal fun AuthErrorReason.toFriendlyAuthMessage(): String =
     when (this) {
         AuthErrorReason.InvalidCredentials ->

@@ -1,10 +1,6 @@
 package com.windnah.feature.discover
 
 import android.Manifest
-import android.content.Context
-import android.graphics.Canvas
-import android.graphics.Paint
-import android.graphics.Rect
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
@@ -73,7 +69,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
@@ -85,8 +80,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.graphics.createBitmap
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.windnah.core.common.format.formatInt
+import com.windnah.core.common.format.formatMegawatts
 import com.windnah.core.designsystem.components.StatusFilterChip
 import com.windnah.core.model.EnergyMetrics
 import com.windnah.core.model.WindFarm
@@ -99,17 +95,12 @@ import org.osmdroid.events.ZoomEvent
 import org.osmdroid.tileprovider.tilesource.XYTileSource
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
-import org.osmdroid.views.overlay.Marker
-import kotlin.math.atan2
-import kotlin.math.cos
 import kotlin.math.roundToInt
-import kotlin.math.sin
-import kotlin.math.sqrt
 import androidx.compose.foundation.layout.widthIn
 
-private val GermanyCenter = GeoPoint(51.1657, 10.4515)
+private val GermanyCenter = GeoPoint(GermanyCenterLat, GermanyCenterLon)
 private const val DefaultMapZoom = 6.0
-private const val DetailMapZoom = 11.2
+internal const val DetailMapZoom = 11.2
 
 private enum class DiscoverMapLayer(val label: String) {
     STANDARD("Standardkarte"),
@@ -774,7 +765,7 @@ private fun EmptyResultsOverlay(
                 text = if (hasActiveFilters) {
                     "Passe Suche oder Filter an, um wieder Windparks auf der Karte zu sehen."
                 } else {
-                    "Aktuell liegen fuer diese Ansicht keine Windparks vor."
+                    "Aktuell liegen für diese Ansicht keine Windparks vor."
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -782,7 +773,7 @@ private fun EmptyResultsOverlay(
             )
             if (hasActiveFilters) {
                 Button(onClick = onResetFilters) {
-                    Text("Filter zuruecksetzen")
+                    Text("Filter zurücksetzen")
                 }
             }
         }
@@ -989,7 +980,7 @@ private fun SelectedWindFarmSheetContent(
             ) {
                 MetricCapsule(
                     title = "Nennleistung",
-                    value = "${formatMw(windFarm.totalCapacityKw)} MW",
+                    value = formatMegawatts(windFarm.totalCapacityKw),
                     modifier = Modifier.weight(1f),
                 )
                 MetricCapsule(
@@ -1046,7 +1037,7 @@ private fun WindFarmPreviewStatusChip(
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = status.previewLabel,
+                text = status.label,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.SemiBold,
                 color = colors.contentColor,
@@ -1269,20 +1260,10 @@ private fun MetricCapsule(
     }
 }
 
-private data class MapViewState(val recenterToken: Int, val windFarms: List<WindFarmPreview>, val selectedId: String?)
-
 private data class PreviewStatusColors(
     val containerColor: Color,
     val contentColor: Color,
 )
-
-private val WindFarmStatus.previewLabel: String
-    get() = when (this) {
-        WindFarmStatus.IN_BETRIEB -> "In Betrieb"
-        WindFarmStatus.IN_WARTUNG -> "In Wartung"
-        WindFarmStatus.IN_PLANUNG -> "In Planung"
-        WindFarmStatus.STILLGELEGT -> "Stillgelegt"
-    }
 
 @Composable
 private fun OpenStreetMapSurface(
@@ -1359,124 +1340,6 @@ private fun OpenStreetMapSurface(
     )
 }
 
-private data class WindFarmCluster(
-    val previews: List<WindFarmPreview>,
-    val latitude: Double,
-    val longitude: Double,
-)
-
-private fun clusterWindFarms(
-    windFarms: List<WindFarmPreview>,
-    zoomLevel: Double,
-): List<WindFarmCluster> {
-    val radiusKm = when {
-        zoomLevel >= 10.0 -> 0.0
-        zoomLevel >= 8.0 -> 20.0
-        zoomLevel >= 6.0 -> 60.0
-        else -> 150.0
-    }
-
-    if (radiusKm == 0.0) {
-        return windFarms.map { WindFarmCluster(listOf(it), it.windFarm.latitude, it.windFarm.longitude) }
-    }
-
-    val remaining = windFarms.toMutableList()
-    val clusters = mutableListOf<WindFarmCluster>()
-
-    while (remaining.isNotEmpty()) {
-        val seed = remaining.removeAt(0)
-        val members = mutableListOf(seed)
-        val iterator = remaining.iterator()
-        while (iterator.hasNext()) {
-            val candidate = iterator.next()
-            if (haversineKm(seed.windFarm.latitude, seed.windFarm.longitude,
-                    candidate.windFarm.latitude, candidate.windFarm.longitude) <= radiusKm) {
-                members.add(candidate)
-                iterator.remove()
-            }
-        }
-        val centerLat = members.map { it.windFarm.latitude }.average()
-        val centerLon = members.map { it.windFarm.longitude }.average()
-        clusters.add(WindFarmCluster(members, centerLat, centerLon))
-    }
-
-    return clusters
-}
-
-private fun zoomToSeparateCluster(cluster: WindFarmCluster): Double {
-    if (cluster.previews.size <= 1) return DetailMapZoom
-    val lats = cluster.previews.map { it.windFarm.latitude }
-    val lons = cluster.previews.map { it.windFarm.longitude }
-    val spanKm = haversineKm(lats.min(), lons.min(), lats.max(), lons.max())
-    return when {
-        spanKm < 5.0 -> 12.0
-        spanKm < 20.0 -> 10.0
-        spanKm < 60.0 -> 8.0
-        else -> 7.0
-    }
-}
-
-private fun haversineKm(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
-    val r = 6371.0
-    val dLat = Math.toRadians(lat2 - lat1)
-    val dLon = Math.toRadians(lon2 - lon1)
-    val a = sin(dLat / 2).let { it * it } +
-        cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) * sin(dLon / 2).let { it * it }
-    return r * 2 * atan2(sqrt(a), sqrt(1 - a))
-}
-
-private fun syncMapMarkers(
-    context: Context,
-    mapView: MapView,
-    windFarms: List<WindFarmPreview>,
-    selectedWindFarmId: String?,
-    onMarkerClick: (String) -> Unit,
-) {
-    mapView.overlays.removeAll { it is Marker }
-
-    val zoom = mapView.zoomLevelDouble
-    val clusters = clusterWindFarms(windFarms, zoom)
-
-    clusters.forEach { cluster ->
-        val isSingle = cluster.previews.size == 1
-        val primary = cluster.previews.first()
-        val windFarm = primary.windFarm
-        val isSelected = isSingle && windFarm.id == selectedWindFarmId
-
-        val badgeText = if (isSingle) {
-            windFarm.turbineCount.toString()
-        } else {
-            cluster.previews.size.toString()
-        }
-
-        val marker = Marker(mapView).apply {
-            position = GeoPoint(cluster.latitude, cluster.longitude)
-            title = if (isSingle) windFarm.name else "${cluster.previews.size} Windparks"
-            setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-            icon = createMarkerBitmapDrawable(
-                context = context,
-                status = if (isSingle) windFarm.status else WindFarmStatus.IN_BETRIEB,
-                badgeText = badgeText,
-                selected = isSelected,
-                isCluster = !isSingle,
-            )
-            setOnMarkerClickListener { _, _ ->
-                if (isSingle) {
-                    onMarkerClick(windFarm.id)
-                } else {
-                    val targetZoom = zoomToSeparateCluster(cluster)
-                    mapView.controller.animateTo(GeoPoint(cluster.latitude, cluster.longitude))
-                    mapView.controller.setZoom(targetZoom)
-                }
-                true
-            }
-        }
-        mapView.overlays.add(marker)
-    }
-
-    mapView.invalidate()
-}
-
 @Composable
 private fun PreviewMapSurface(modifier: Modifier = Modifier) {
     Box(
@@ -1522,148 +1385,6 @@ private fun PreviewMapSurface(modifier: Modifier = Modifier) {
         )
     }
 }
-
-private fun createMarkerBitmapDrawable(
-    context: Context,
-    status: WindFarmStatus,
-    badgeText: String,
-    selected: Boolean,
-    isCluster: Boolean = false,
-): android.graphics.drawable.BitmapDrawable {
-    val size = when {
-        isCluster -> 144
-        selected -> 152
-        else -> 128
-    }
-    val bitmap = createBitmap(size, size)
-    val canvas = Canvas(bitmap)
-
-    if (isCluster) {
-        val centerX = size / 2f
-        val centerY = size / 2f
-
-        val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color(0xFF3F6836).toArgb()
-            style = Paint.Style.STROKE
-            strokeWidth = 6f
-            alpha = 80
-        }
-        canvas.drawCircle(centerX, centerY, centerX - 3f, ringPaint)
-
-        val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color(0xFF3F6836).toArgb()
-        }
-        canvas.drawCircle(centerX, centerY, centerX - 10f, fillPaint)
-
-        val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = android.graphics.Color.WHITE
-            style = Paint.Style.STROKE
-            strokeWidth = 4f
-        }
-        canvas.drawCircle(centerX, centerY, centerX - 10f, strokePaint)
-
-        val countRect = Rect()
-        val countPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = android.graphics.Color.WHITE
-            textSize = 46f
-            textAlign = Paint.Align.CENTER
-            typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
-        }
-        countPaint.getTextBounds(badgeText, 0, badgeText.length, countRect)
-        canvas.drawText(badgeText, centerX, centerY + countRect.height() / 2f, countPaint)
-    } else {
-        val (fillColor, textColor) = markerColors(status, selected)
-        val outerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = fillColor }
-        val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = android.graphics.Color.WHITE
-            style = Paint.Style.STROKE
-            strokeWidth = if (selected) 6f else 4f
-        }
-        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = textColor
-            textSize = if (selected) 48f else 40f
-            textAlign = Paint.Align.CENTER
-            typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
-        }
-        val badgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = android.graphics.Color.WHITE
-            alpha = 235
-        }
-        val badgeTextColor = fillColor
-        val badgeTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = badgeTextColor
-            textSize = if (selected) 28f else 26f
-            textAlign = Paint.Align.CENTER
-            typeface = android.graphics.Typeface.create(android.graphics.Typeface.DEFAULT, android.graphics.Typeface.BOLD)
-        }
-
-        val radius = if (selected) 40f else 34f
-        val centerX = size / 2f
-        val centerY = size / 2f - 8f
-        canvas.drawCircle(centerX, centerY, radius, outerPaint)
-        canvas.drawCircle(centerX, centerY, radius, strokePaint)
-        drawWindTurbineIcon(canvas, centerX, centerY, radius * 0.62f, textColor)
-
-        val badgeRect = Rect()
-        badgeTextPaint.getTextBounds(badgeText, 0, badgeText.length, badgeRect)
-        val badgeRadius = if (selected) 20f else 18f
-        // Badge oben links wie in Figma
-        val badgeCenterX = centerX - radius * 0.7f
-        val badgeCenterY = centerY - radius * 0.65f
-        canvas.drawCircle(badgeCenterX, badgeCenterY, badgeRadius, badgePaint)
-        canvas.drawText(badgeText, badgeCenterX, badgeCenterY + badgeRect.height() / 2f, badgeTextPaint)
-    }
-
-    return android.graphics.drawable.BitmapDrawable(context.resources, bitmap)
-}
-
-private fun markerColors(status: WindFarmStatus, selected: Boolean): Pair<Int, Int> {
-    val (fillColor, textColor) = when (status) {
-        WindFarmStatus.IN_BETRIEB -> Color(0xFF4F7650) to Color.White
-        WindFarmStatus.IN_WARTUNG -> Color(0xFFF9CD55) to Color(0xFF2E2A12)
-        WindFarmStatus.IN_PLANUNG -> Color(0xFF386569) to Color.White
-        WindFarmStatus.STILLGELEGT -> Color(0xFF9E9E9E) to Color(0xFF1F1F1F)
-    }
-    val fill = if (selected) fillColor else fillColor.copy(alpha = 0.92f)
-    return fill.toArgb() to textColor.toArgb()
-}
-
-private fun drawWindTurbineIcon(canvas: Canvas, cx: Float, cy: Float, iconRadius: Float, color: Int) {
-    val bladePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        this.color = color
-        style = Paint.Style.FILL
-    }
-    val hubRadius = iconRadius * 0.18f
-    val bladeLength = iconRadius * 0.82f
-    val bladeWidth = iconRadius * 0.22f
-
-    // 3 Rotorblätter bei 270°, 30°, 150° (oben + links-unten + rechts-unten)
-    val angles = listOf(270.0, 30.0, 150.0)
-    angles.forEach { angleDeg ->
-        val rad = Math.toRadians(angleDeg)
-        val perpRad = Math.toRadians(angleDeg + 90.0)
-        val tipX = cx + (bladeLength * cos(rad)).toFloat()
-        val tipY = cy + (bladeLength * sin(rad)).toFloat()
-        val p1x = cx + (hubRadius * cos(perpRad)).toFloat()
-        val p1y = cy + (hubRadius * sin(perpRad)).toFloat()
-        val p2x = cx - (hubRadius * cos(perpRad)).toFloat()
-        val p2y = cy - (hubRadius * sin(perpRad)).toFloat()
-        val path = android.graphics.Path().apply {
-            moveTo(p1x, p1y)
-            lineTo(tipX + (bladeWidth * 0.1f * cos(perpRad)).toFloat(), tipY + (bladeWidth * 0.1f * sin(perpRad)).toFloat())
-            lineTo(p2x, p2y)
-            close()
-        }
-        canvas.drawPath(path, bladePaint)
-    }
-
-    // Nabe (Mittelpunkt)
-    canvas.drawCircle(cx, cy, hubRadius, bladePaint)
-}
-
-private fun formatMw(totalCapacityKw: Double): String = String.format("%.1f", totalCapacityKw / 1000.0)
-
-private fun formatInt(value: Int): String = "%,d".format(value)
 
 @Preview(showBackground = true, widthDp = 390, heightDp = 844)
 @Composable

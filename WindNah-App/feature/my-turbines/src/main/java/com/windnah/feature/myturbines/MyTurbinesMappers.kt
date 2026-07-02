@@ -1,8 +1,10 @@
 package com.windnah.feature.myturbines
 
+import com.windnah.core.common.format.formatCompactNumber
+import com.windnah.core.common.format.formatKilotonnes
+import com.windnah.core.common.format.formatMegawatts
 import com.windnah.core.model.WindFarmPreview
 import com.windnah.core.model.WindFarmStatus
-import java.util.Locale
 
 data class MyTurbinesWindFarmItemUiModel(
     val id: String,
@@ -54,30 +56,9 @@ internal fun WindFarmPreview.toMyTurbinesWindFarmItemUiModel(): MyTurbinesWindFa
     )
 }
 
-internal fun formatKilotonnes(tonnes: Double): String =
-    String.format(Locale.GERMANY, "%.1f", tonnes / 1_000.0)
-
-internal fun formatCompactNumber(value: Int): String =
-    if (value >= 1_000) {
-        String.format(Locale.GERMANY, "%.1fk", value / 1_000.0)
-    } else {
-        value.toString()
-    }
-
-internal fun formatMegawatts(totalCapacityKw: Double): String =
-    String.format(Locale.GERMANY, "%.1f MW", totalCapacityKw / 1_000.0)
-
 internal fun WindFarmStatus.toMyTurbinesStatusUiModel(): MyTurbinesStatusUiModel = when (this) {
     WindFarmStatus.IN_BETRIEB -> MyTurbinesStatusUiModel.InOperation
     WindFarmStatus.IN_WARTUNG -> MyTurbinesStatusUiModel.Maintenance
     WindFarmStatus.IN_PLANUNG -> MyTurbinesStatusUiModel.Planned
     WindFarmStatus.STILLGELEGT -> MyTurbinesStatusUiModel.Decommissioned
 }
-
-internal val WindFarmStatus.label: String
-    get() = when (this) {
-        WindFarmStatus.IN_BETRIEB -> "In Betrieb"
-        WindFarmStatus.IN_WARTUNG -> "In Wartung"
-        WindFarmStatus.IN_PLANUNG -> "In Planung"
-        WindFarmStatus.STILLGELEGT -> "Stillgelegt"
-    }
