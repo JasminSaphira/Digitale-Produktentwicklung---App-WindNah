@@ -8,9 +8,11 @@ interface UserPreferencesRepository {
     val showLiveOutputMetric: Flow<Boolean>
     val showCo2SavingsMetric: Flow<Boolean>
     val showHouseholdsMetric: Flow<Boolean>
+    fun observeMemberSinceEpochDay(userId: String): Flow<Long?>
     suspend fun setOnboardingCompleted()
     suspend fun setLocationUsageEnabled(enabled: Boolean)
     suspend fun setShowLiveOutputMetric(enabled: Boolean)
     suspend fun setShowCo2SavingsMetric(enabled: Boolean)
     suspend fun setShowHouseholdsMetric(enabled: Boolean)
+    suspend fun ensureMemberSinceEpochDay(userId: String, epochDay: Long)
 }

@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import com.windnah.core.domain.repository.UserPreferencesRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -28,6 +29,9 @@ class UserPreferencesRepositoryImpl @Inject constructor(
     override val showHouseholdsMetric: Flow<Boolean> =
         dataStore.data.map { it[KEY_SHOW_HOUSEHOLDS_METRIC] ?: true }
 
+    override fun observeMemberSinceEpochDay(userId: String): Flow<Long?> =
+        dataStore.data.map { it[memberSinceKey(userId)] }
+
     override suspend fun setOnboardingCompleted() {
         dataStore.edit { it[KEY_ONBOARDING_COMPLETED] = true }
     }
@@ -47,6 +51,23 @@ class UserPreferencesRepositoryImpl @Inject constructor(
     override suspend fun setShowHouseholdsMetric(enabled: Boolean) {
         dataStore.edit { it[KEY_SHOW_HOUSEHOLDS_METRIC] = enabled }
     }
+
+    override suspend fun ensureMemberSinceEpochDay(userId: String, epochDay: Long) {
+        val key = memberSinceKey(userId)
+        dataStore.edit { preferences ->
+            if (preferences[key] == null) {
+                preferences[key] = epochDay
+            }
+        }
+    }
+
+    private fun memberSinceKey(userId: String): Preferences.Key<Long> =
+        longPreferencesKey("member_since_epoch_day_${userId.toPreferenceKeySegment()}")
+
+    private fun String.toPreferenceKeySegment(): String =
+        map { char ->
+            if (char.isLetterOrDigit() || char == '_' || char == '-') char else '_'
+        }.joinToString(separator = "")
 
     companion object {
         private val KEY_ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")

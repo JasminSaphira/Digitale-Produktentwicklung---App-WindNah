@@ -117,6 +117,7 @@ fun ProfileScreen(
     val showCo2SavingsMetric by viewModel.showCo2SavingsMetric.collectAsStateWithLifecycle()
     val showHouseholdsMetric by viewModel.showHouseholdsMetric.collectAsStateWithLifecycle()
     val editProfileUiState by viewModel.editProfileUiState.collectAsStateWithLifecycle()
+    val profileStats by viewModel.profileStats.collectAsStateWithLifecycle()
     val activity = remember(context) { context.findActivity() }
     var showLoginSheet by remember { mutableStateOf(false) }
     var showEditProfileDialog by remember { mutableStateOf(false) }
@@ -213,6 +214,7 @@ fun ProfileScreen(
             item {
                 ProfileHeroCard(
                     currentUser = currentUser,
+                    stats = profileStats,
                     onEditClick = {
                         if (currentUser == null) {
                             showLoginSheet = true
@@ -398,6 +400,7 @@ fun ProfileScreen(
 @Composable
 private fun ProfileHeroCard(
     currentUser: AuthUser?,
+    stats: ProfileStatsUiState,
     onEditClick: () -> Unit,
 ) {
     val displayName = currentUser?.displayName
@@ -463,9 +466,9 @@ private fun ProfileHeroCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
-                ProfileStat(value = "12", label = "Besuche")
-                ProfileStat(value = "2", label = "Favoriten")
-                ProfileStat(value = "2", label = "Mitgliedstage")
+                ProfileStat(value = stats.visitsCount.toString(), label = "Besuche")
+                ProfileStat(value = stats.favoritesCount.toString(), label = "Favoriten")
+                ProfileStat(value = stats.memberDays.toString(), label = "Mitgliedstage")
             }
         }
     }

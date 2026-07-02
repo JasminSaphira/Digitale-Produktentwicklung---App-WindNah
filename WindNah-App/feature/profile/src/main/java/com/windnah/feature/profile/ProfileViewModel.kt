@@ -5,13 +5,22 @@ import androidx.lifecycle.viewModelScope
 import com.windnah.core.domain.repository.AuthErrorReason
 import com.windnah.core.domain.repository.AuthRepository
 import com.windnah.core.domain.repository.AuthResult
+import com.windnah.core.domain.repository.FavoriteRepository
+import com.windnah.core.domain.repository.RecentlyViewedRepository
 import com.windnah.core.domain.repository.UserPreferencesRepository
 import com.windnah.core.model.AuthUser
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.util.concurrent.TimeUnit
+import kotlin.math.max
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -22,10 +31,19 @@ data class EditProfileUiState(
     val errorMessage: String? = null,
 )
 
+data class ProfileStatsUiState(
+    val visitsCount: Int = 0,
+    val favoritesCount: Int = 0,
+    val memberDays: Int = 0,
+)
+
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val userPreferencesRepository: UserPreferencesRepository,
+    favoriteRepository: FavoriteRepository,
+    recentlyViewedRepository: RecentlyViewedRepository,
 ) : ViewModel() {
 
     private val _currentUser = MutableStateFlow<AuthUser?>(null)
@@ -34,9 +52,45 @@ class ProfileViewModel @Inject constructor(
     private val _editProfileUiState = MutableStateFlow(EditProfileUiState())
     val editProfileUiState: StateFlow<EditProfileUiState> = _editProfileUiState.asStateFlow()
 
+    private val memberDays = _currentUser
+        .flatMapLatest { user ->
+            if (user == null) {
+                flowOf(0)
+            } else {
+                userPreferencesRepository.observeMemberSinceEpochDay(user.id)
+                    .map { memberSinceEpochDay ->
+                        memberSinceEpochDay?.let { since ->
+                            max(1L, currentEpochDay() - since + 1L).toInt()
+                        } ?: 0
+                    }
+            }
+        }
+
+    val profileStats: StateFlow<ProfileStatsUiState> = combine(
+        recentlyViewedRepository.observeRecentlyViewedIds(limit = Int.MAX_VALUE).map { it.size },
+        favoriteRepository.observeFavoriteIds().map { it.size },
+        memberDays,
+    ) { visitsCount, favoritesCount, memberDays ->
+        ProfileStatsUiState(
+            visitsCount = visitsCount,
+            favoritesCount = favoritesCount,
+            memberDays = memberDays,
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = ProfileStatsUiState(),
+    )
+
     init {
         viewModelScope.launch {
             authRepository.currentUser.collect { user ->
+                if (user != null) {
+                    userPreferencesRepository.ensureMemberSinceEpochDay(
+                        userId = user.id,
+                        epochDay = currentEpochDay(),
+                    )
+                }
                 _currentUser.value = user
             }
         }
@@ -129,6 +183,9 @@ class ProfileViewModel @Inject constructor(
         }
     }
 }
+
+private fun currentEpochDay(): Long =
+    TimeUnit.MILLISECONDS.toDays(System.currentTimeMillis())
 
 private fun AuthErrorReason.toEditProfileMessage(): String =
     when (this) {
