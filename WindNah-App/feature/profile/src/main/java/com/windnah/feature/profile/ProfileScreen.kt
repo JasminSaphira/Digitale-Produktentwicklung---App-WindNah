@@ -26,9 +26,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
@@ -36,6 +38,7 @@ import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Air
 import androidx.compose.material.icons.outlined.CheckBox
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Eco
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Email
@@ -59,20 +62,24 @@ import androidx.compose.material3.CardElevation
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchColors
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -82,14 +89,19 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.windnah.core.designsystem.components.WindNahAnimatedDialog
+import com.windnah.core.designsystem.components.WindNahDialogSurface
 import com.windnah.core.designsystem.components.WindNahFooter
 import com.windnah.core.designsystem.components.WindNahScreenHeader
 import com.windnah.core.model.AuthUser
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -105,8 +117,10 @@ fun ProfileScreen(
     val showLiveOutputMetric by viewModel.showLiveOutputMetric.collectAsStateWithLifecycle()
     val showCo2SavingsMetric by viewModel.showCo2SavingsMetric.collectAsStateWithLifecycle()
     val showHouseholdsMetric by viewModel.showHouseholdsMetric.collectAsStateWithLifecycle()
+    val editProfileUiState by viewModel.editProfileUiState.collectAsStateWithLifecycle()
     val activity = remember(context) { context.findActivity() }
     var showLoginSheet by remember { mutableStateOf(false) }
+    var showEditProfileDialog by remember { mutableStateOf(false) }
     var showLocationSettingsSheet by remember { mutableStateOf(false) }
     var hasRequestedLocationPermissionFromProfile by remember { mutableStateOf(false) }
 
@@ -137,6 +151,28 @@ fun ProfileScreen(
                 showLoginSheet = false
                 onLoginClick()
             },
+        )
+    }
+
+    val editableUser = currentUser
+    if (showEditProfileDialog && editableUser != null) {
+        EditProfileDialog(
+            currentUser = editableUser,
+            uiState = editProfileUiState,
+            onDismiss = {
+                if (!editProfileUiState.isSaving) {
+                    showEditProfileDialog = false
+                    viewModel.clearEditProfileError()
+                }
+            },
+            onSave = { displayName, email, dismiss ->
+                viewModel.updateProfile(
+                    displayName = displayName,
+                    email = email,
+                    onSuccess = { dismiss() },
+                )
+            },
+            onClearError = viewModel::clearEditProfileError,
         )
     }
 
@@ -178,7 +214,13 @@ fun ProfileScreen(
             item {
                 ProfileHeroCard(
                     currentUser = currentUser,
-                    onEditClick = { showLoginSheet = true },
+                    onEditClick = {
+                        if (currentUser == null) {
+                            showLoginSheet = true
+                        } else {
+                            showEditProfileDialog = true
+                        }
+                    },
                 )
             }
 
@@ -771,13 +813,175 @@ private fun windNahSwitchColors(): SwitchColors {
     )
 }
 
+@Composable
+private fun EditProfileDialog(
+    currentUser: AuthUser,
+    uiState: EditProfileUiState,
+    onDismiss: () -> Unit,
+    onSave: (displayName: String, email: String, dismiss: () -> Unit) -> Unit,
+    onClearError: () -> Unit,
+) {
+    var displayName by remember(currentUser.id, currentUser.displayName) {
+        mutableStateOf(currentUser.displayName.orEmpty())
+    }
+    var email by remember(currentUser.id, currentUser.email) {
+        mutableStateOf(currentUser.email.orEmpty())
+    }
+
+    WindNahAnimatedDialog(onDismissRequest = onDismiss) { dismissAnimated ->
+        WindNahDialogSurface(
+            modifier = Modifier.widthIn(max = 388.dp),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp),
+            ) {
+                Text(
+                    text = "Profil bearbeiten",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    ProfileEditTextField(
+                        value = displayName,
+                        onValueChange = {
+                            displayName = it
+                            onClearError()
+                        },
+                        label = "Benutzername",
+                        leadingIcon = Icons.Outlined.Person,
+                        onClear = {
+                            displayName = ""
+                            onClearError()
+                        },
+                        keyboardType = KeyboardType.Text,
+                        imeAction = ImeAction.Next,
+                        enabled = !uiState.isSaving,
+                    )
+                    ProfileEditTextField(
+                        value = email,
+                        onValueChange = {
+                            email = it
+                            onClearError()
+                        },
+                        label = "E-Mail",
+                        leadingIcon = Icons.Outlined.Email,
+                        onClear = {
+                            email = ""
+                            onClearError()
+                        },
+                        keyboardType = KeyboardType.Email,
+                        imeAction = ImeAction.Done,
+                        enabled = !uiState.isSaving,
+                    )
+                }
+
+                if (uiState.errorMessage != null) {
+                    Text(
+                        text = uiState.errorMessage,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(20.dp, Alignment.End),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    TextButton(
+                        onClick = { dismissAnimated(null) },
+                        enabled = !uiState.isSaving,
+                    ) {
+                        Text("Abbrechen")
+                    }
+                    Button(
+                        onClick = { onSave(displayName, email) { dismissAnimated(null) } },
+                        enabled = !uiState.isSaving,
+                        shape = RoundedCornerShape(20.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                        ),
+                    ) {
+                        Text(if (uiState.isSaving) "Speichern..." else "Speichern")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ProfileEditTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    leadingIcon: ImageVector,
+    onClear: () -> Unit,
+    keyboardType: KeyboardType,
+    imeAction: ImeAction,
+    enabled: Boolean,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        enabled = enabled,
+        label = { Text(label) },
+        leadingIcon = {
+            Icon(
+                imageVector = leadingIcon,
+                contentDescription = null,
+                tint = Color(0xFF172018),
+            )
+        },
+        trailingIcon = {
+            IconButton(
+                onClick = onClear,
+                enabled = enabled && value.isNotEmpty(),
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Close,
+                    contentDescription = "$label leeren",
+                )
+            }
+        },
+        keyboardOptions = KeyboardOptions(
+            keyboardType = keyboardType,
+            imeAction = imeAction,
+        ),
+        singleLine = true,
+        shape = RoundedCornerShape(4.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp),
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun LoginBottomSheet(
     onDismiss: () -> Unit,
     onEmailLoginClick: () -> Unit,
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val coroutineScope = rememberCoroutineScope()
+
+    fun dismissSheet(afterDismiss: (() -> Unit)? = null) {
+        coroutineScope.launch {
+            sheetState.hide()
+            onDismiss()
+            afterDismiss?.invoke()
+        }
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = { dismissSheet() },
+        sheetState = sheetState,
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -804,7 +1008,7 @@ private fun LoginBottomSheet(
                 Text("Mit Google anmelden")
             }
             Button(
-                onClick = onEmailLoginClick,
+                onClick = { dismissSheet(onEmailLoginClick) },
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Icon(Icons.Outlined.MailOutline, contentDescription = null)
@@ -812,7 +1016,7 @@ private fun LoginBottomSheet(
                 Text("Mit E-Mail anmelden")
             }
             TextButton(
-                onClick = onDismiss,
+                onClick = { dismissSheet() },
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("Nicht jetzt")
@@ -827,7 +1031,21 @@ private fun LocationPermissionBottomSheet(
     onDismiss: () -> Unit,
     onOpenSettingsClick: () -> Unit,
 ) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val coroutineScope = rememberCoroutineScope()
+
+    fun dismissSheet(afterDismiss: (() -> Unit)? = null) {
+        coroutineScope.launch {
+            sheetState.hide()
+            onDismiss()
+            afterDismiss?.invoke()
+        }
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = { dismissSheet() },
+        sheetState = sheetState,
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -846,7 +1064,7 @@ private fun LocationPermissionBottomSheet(
             )
             Spacer(modifier = Modifier.height(8.dp))
             Button(
-                onClick = onOpenSettingsClick,
+                onClick = { dismissSheet(onOpenSettingsClick) },
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Icon(Icons.Outlined.LocationOn, contentDescription = null)
@@ -854,7 +1072,7 @@ private fun LocationPermissionBottomSheet(
                 Text("App-Einstellungen öffnen")
             }
             TextButton(
-                onClick = onDismiss,
+                onClick = { dismissSheet() },
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("Nicht jetzt")

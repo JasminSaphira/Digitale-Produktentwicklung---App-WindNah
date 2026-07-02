@@ -3,11 +3,13 @@ package com.windnah.feature.windparkdetail
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.windnah.core.domain.repository.AuthRepository
 import com.windnah.core.domain.repository.FavoriteRepository
 import com.windnah.core.domain.repository.RecentlyViewedRepository
 import com.windnah.core.domain.repository.UserPreferencesRepository
 import com.windnah.core.domain.usecase.GetWindFarmDetailUseCase
 import com.windnah.core.designsystem.components.TransparencyInfoUiModel
+import com.windnah.core.model.AuthUser
 import com.windnah.core.model.WindFarmDetail
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,6 +26,7 @@ sealed interface WindFarmDetailUiState {
         val detail: WindFarmDetail,
         val metricVisibility: MetricVisibilityPreferences,
         val isFavorite: Boolean,
+        val currentUser: AuthUser?,
         val selectedTransparencyInfo: TransparencyInfoUiModel? = null,
     ) : WindFarmDetailUiState
     data object NotFound : WindFarmDetailUiState
@@ -44,6 +47,7 @@ data class MetricVisibilityPreferences(
 class WindFarmDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     getWindFarmDetail: GetWindFarmDetailUseCase,
+    authRepository: AuthRepository,
     userPreferencesRepository: UserPreferencesRepository,
     private val favoriteRepository: FavoriteRepository,
     private val recentlyViewedRepository: RecentlyViewedRepository,
@@ -76,13 +80,15 @@ class WindFarmDetailViewModel @Inject constructor(
             getWindFarmDetail(windFarmId),
             metricVisibility,
             favoriteRepository.observeIsFavorite(windFarmId),
+            authRepository.currentUser,
             selectedTransparencyMetric,
-        ) { detail, metricVisibility, isFavorite, selectedMetric ->
+        ) { detail, metricVisibility, isFavorite, currentUser, selectedMetric ->
             if (detail == null) WindFarmDetailUiState.NotFound
             else WindFarmDetailUiState.Success(
                 detail = detail,
                 metricVisibility = metricVisibility,
                 isFavorite = isFavorite,
+                currentUser = currentUser,
                 selectedTransparencyInfo = selectedMetric?.toTransparencyInfoUiModel(detail),
             )
         }

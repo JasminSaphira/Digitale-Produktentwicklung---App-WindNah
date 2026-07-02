@@ -17,6 +17,11 @@ interface AuthRepository {
         displayName: String?,
     ): AuthResult
 
+    suspend fun updateProfile(
+        displayName: String,
+        email: String,
+    ): AuthResult
+
     suspend fun signOut()
 }
 
@@ -27,9 +32,11 @@ sealed interface AuthResult {
 
 enum class AuthErrorReason {
     InvalidCredentials,
+    InvalidEmail,
     AccountNotFound,
     EmailAlreadyInUse,
     WeakPassword,
+    RequiresRecentLogin,
     Network,
     NotConfigured,
     Unknown,

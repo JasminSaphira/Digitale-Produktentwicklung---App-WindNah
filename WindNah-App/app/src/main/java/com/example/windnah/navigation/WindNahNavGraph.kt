@@ -1,6 +1,10 @@
 package com.example.windnah.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -34,6 +38,8 @@ fun WindNahNavGraph(
     modifier: Modifier = Modifier,
     startDestination: String = ROUTE_DISCOVER,
 ) {
+    var authReturnRoute by rememberSaveable { mutableStateOf<String?>(null) }
+
     NavHost(
         navController = navController,
         startDestination = startDestination,
@@ -54,6 +60,15 @@ fun WindNahNavGraph(
                     launchSingleTop = true
                 }
             }
+        }
+
+        fun navigateAfterAuthSuccess() {
+            val returnRoute = authReturnRoute
+            authReturnRoute = null
+            if (returnRoute != null && navController.popBackStack(returnRoute, inclusive = false)) {
+                return
+            }
+            navigateBackToProfile()
         }
 
         composable(ROUTE_ONBOARDING) {
@@ -87,7 +102,10 @@ fun WindNahNavGraph(
         }
         composable(ROUTE_PROFILE) {
             ProfileScreen(
-                onLoginClick = { navController.navigate(ROUTE_LOGIN) },
+                onLoginClick = {
+                    authReturnRoute = null
+                    navController.navigate(ROUTE_LOGIN)
+                },
                 onNavigateToMap = { navigateToDiscover() },
             )
         }
@@ -97,16 +115,27 @@ fun WindNahNavGraph(
                 type = NavType.StringType
                 nullable = false
             }),
-        ) {
+        ) { backStackEntry ->
+            val detailRoute = windFarmDetailRoute(
+                checkNotNull(backStackEntry.arguments?.getString("windFarmId")),
+            )
             WindFarmDetailScreen(
                 onNavigateBack = { navController.popBackStack() },
+                onLoginClick = {
+                    authReturnRoute = detailRoute
+                    navController.navigate(ROUTE_LOGIN)
+                },
+                onRegisterClick = {
+                    authReturnRoute = detailRoute
+                    navController.navigate(ROUTE_REGISTER)
+                },
             )
         }
         composable(ROUTE_LOGIN) {
             LoginScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToRegister = { navController.navigate(ROUTE_REGISTER) },
-                onAuthSuccess = { navigateBackToProfile() },
+                onAuthSuccess = { navigateAfterAuthSuccess() },
             )
         }
         composable(ROUTE_REGISTER) {
@@ -118,7 +147,7 @@ fun WindNahNavGraph(
                         launchSingleTop = true
                     }
                 },
-                onAuthSuccess = { navigateBackToProfile() },
+                onAuthSuccess = { navigateAfterAuthSuccess() },
             )
         }
     }

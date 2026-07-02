@@ -8,6 +8,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
+import com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException
 import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import com.google.firebase.auth.UserProfileChangeRequest
@@ -75,6 +76,33 @@ class FirebaseAuthRepository @Inject constructor(
         return auth.currentUser?.toAuthUser()?.let(AuthResult::Success) ?: result
     }
 
+    override suspend fun updateProfile(
+        displayName: String,
+        email: String,
+    ): AuthResult {
+        val auth = firebaseAuthOrNull() ?: return AuthResult.Failure(AuthErrorReason.NotConfigured)
+        val user = auth.currentUser ?: return AuthResult.Failure(AuthErrorReason.AccountNotFound)
+
+        user.updateProfile(
+            UserProfileChangeRequest.Builder()
+                .setDisplayName(displayName.trim().ifEmpty { null })
+                .build(),
+        ).awaitCompletion()?.let { reason ->
+            return AuthResult.Failure(reason)
+        }
+
+        val trimmedEmail = email.trim()
+        if (!user.email.equals(trimmedEmail, ignoreCase = true)) {
+            @Suppress("DEPRECATION")
+            user.updateEmail(trimmedEmail).awaitCompletion()?.let { reason ->
+                return AuthResult.Failure(reason)
+            }
+        }
+
+        return auth.currentUser?.toAuthUser()?.let(AuthResult::Success)
+            ?: AuthResult.Failure(AuthErrorReason.Unknown)
+    }
+
     override suspend fun signOut() {
         firebaseAuthOrNull()?.signOut()
     }
@@ -106,10 +134,10 @@ class FirebaseAuthRepository @Inject constructor(
             }
         }
 
-    private suspend fun com.google.android.gms.tasks.Task<Void>.awaitCompletion() {
-        suspendCancellableCoroutine<Unit> { continuation ->
+    private suspend fun com.google.android.gms.tasks.Task<Void>.awaitCompletion(): AuthErrorReason? {
+        return suspendCancellableCoroutine { continuation ->
             addOnCompleteListener {
-                continuation.resume(Unit)
+                continuation.resume(if (it.isSuccessful) null else it.exception.toAuthErrorReason())
             }
         }
     }
@@ -126,6 +154,7 @@ private fun Throwable?.toAuthErrorReason(): AuthErrorReason =
     when (this) {
         is FirebaseNetworkException -> AuthErrorReason.Network
         is FirebaseAuthInvalidUserException -> AuthErrorReason.AccountNotFound
+        is FirebaseAuthRecentLoginRequiredException -> AuthErrorReason.RequiresRecentLogin
         is FirebaseAuthInvalidCredentialsException -> AuthErrorReason.InvalidCredentials
         is FirebaseAuthUserCollisionException -> AuthErrorReason.EmailAlreadyInUse
         is FirebaseAuthWeakPasswordException -> AuthErrorReason.WeakPassword
@@ -133,10 +162,11 @@ private fun Throwable?.toAuthErrorReason(): AuthErrorReason =
         is FirebaseAuthException -> when (errorCode) {
             "ERROR_USER_NOT_FOUND" -> AuthErrorReason.AccountNotFound
             "ERROR_WRONG_PASSWORD",
-            "ERROR_INVALID_CREDENTIAL",
-            "ERROR_INVALID_EMAIL" -> AuthErrorReason.InvalidCredentials
+            "ERROR_INVALID_CREDENTIAL" -> AuthErrorReason.InvalidCredentials
+            "ERROR_INVALID_EMAIL" -> AuthErrorReason.InvalidEmail
             "ERROR_EMAIL_ALREADY_IN_USE" -> AuthErrorReason.EmailAlreadyInUse
             "ERROR_WEAK_PASSWORD" -> AuthErrorReason.WeakPassword
+            "ERROR_REQUIRES_RECENT_LOGIN" -> AuthErrorReason.RequiresRecentLogin
             "ERROR_NETWORK_REQUEST_FAILED" -> AuthErrorReason.Network
             else -> AuthErrorReason.Unknown
         }

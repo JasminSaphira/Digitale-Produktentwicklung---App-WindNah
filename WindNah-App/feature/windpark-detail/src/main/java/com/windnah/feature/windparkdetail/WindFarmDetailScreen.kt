@@ -37,6 +37,8 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -44,14 +46,17 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -72,8 +77,11 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.windnah.core.designsystem.components.TransparencyInfoUiModel
+import com.windnah.core.designsystem.components.WindNahAnimatedDialog
+import com.windnah.core.designsystem.components.WindNahDialogSurface
 import com.windnah.core.designsystem.components.WindNahFooter
 import com.windnah.core.designsystem.components.WindNahTransparencyBottomSheet
+import com.windnah.core.model.AuthUser
 import com.windnah.core.model.EnergyMetrics
 import com.windnah.core.model.WeatherData
 import com.windnah.core.model.WindFarm
@@ -87,6 +95,8 @@ import kotlin.math.roundToInt
 @Composable
 fun WindFarmDetailScreen(
     onNavigateBack: () -> Unit,
+    onLoginClick: () -> Unit = {},
+    onRegisterClick: () -> Unit = {},
     viewModel: WindFarmDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -98,10 +108,13 @@ fun WindFarmDetailScreen(
             detail = state.detail,
             metricVisibility = state.metricVisibility,
             isFavorite = state.isFavorite,
+            currentUser = state.currentUser,
             selectedTransparencyInfo = state.selectedTransparencyInfo,
             onEvent = viewModel::onEvent,
             onFavoriteClick = viewModel::toggleFavorite,
             onNavigateBack = onNavigateBack,
+            onLoginClick = onLoginClick,
+            onRegisterClick = onRegisterClick,
         )
     }
 }
@@ -131,12 +144,16 @@ private fun WindFarmDetailContent(
     detail: WindFarmDetail,
     metricVisibility: MetricVisibilityPreferences,
     isFavorite: Boolean,
+    currentUser: AuthUser?,
     selectedTransparencyInfo: TransparencyInfoUiModel?,
     onEvent: (WindFarmDetailUiEvent) -> Unit,
     onFavoriteClick: () -> Unit,
     onNavigateBack: () -> Unit,
+    onLoginClick: () -> Unit,
+    onRegisterClick: () -> Unit,
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
+    var showShareLoginDialog by remember { mutableStateOf(false) }
     val tabs = listOf("Übersicht", "Windräder Details")
 
     // Edge-to-edge: no Scaffold insets on the header, we handle them manually
@@ -155,6 +172,11 @@ private fun WindFarmDetailContent(
                 isFavorite = isFavorite,
                 onFavoriteClick = onFavoriteClick,
                 onNavigateBack = onNavigateBack,
+                onShareClick = {
+                    if (currentUser == null) {
+                        showShareLoginDialog = true
+                    }
+                },
             )
 
             // White tab row with divider, exactly like Figma
@@ -208,6 +230,112 @@ private fun WindFarmDetailContent(
             onDismiss = { onEvent(WindFarmDetailUiEvent.TransparencyInfoDismissed) },
         )
     }
+
+    if (showShareLoginDialog) {
+        ShareLoginDialog(
+            onDismiss = { showShareLoginDialog = false },
+            onLoginClick = {
+                showShareLoginDialog = false
+                onLoginClick()
+            },
+            onRegisterClick = {
+                showShareLoginDialog = false
+                onRegisterClick()
+            },
+        )
+    }
+}
+
+@Composable
+private fun ShareLoginDialog(
+    onDismiss: () -> Unit,
+    onLoginClick: () -> Unit,
+    onRegisterClick: () -> Unit,
+) {
+    WindNahAnimatedDialog(onDismissRequest = onDismiss) { dismissAnimated ->
+        WindNahDialogSurface {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 40.dp, vertical = 34.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(24.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .background(
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+                            shape = RoundedCornerShape(16.dp),
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Share,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.surfaceContainerLowest,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    Text(
+                        text = "Windpark teilen",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = "Melde dich an, um Windparks mit anderen Nutzer:innen der WindNah Community zu teilen.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Button(
+                        onClick = { dismissAnimated(onLoginClick) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(40.dp),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                        ),
+                    ) {
+                        Text("Anmelden")
+                    }
+                    OutlinedButton(
+                        onClick = { dismissAnimated(onRegisterClick) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(40.dp),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.primary,
+                        ),
+                    ) {
+                        Text("Konto erstellen")
+                    }
+                    TextButton(
+                        onClick = { dismissAnimated(null) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(
+                            text = "Nicht jetzt",
+                            color = MaterialTheme.colorScheme.outline,
+                        )
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -216,6 +344,7 @@ private fun WindFarmHeader(
     isFavorite: Boolean,
     onFavoriteClick: () -> Unit,
     onNavigateBack: () -> Unit,
+    onShareClick: () -> Unit,
 ) {
     Box(
         modifier = Modifier
@@ -295,7 +424,7 @@ private fun WindFarmHeader(
                     )
                 }
             }
-            IconButton(onClick = {}) {
+            IconButton(onClick = onShareClick) {
                 Box(
                     modifier = Modifier
                         .size(32.dp)
@@ -887,12 +1016,7 @@ private fun NoiseEstimateCard(
                 }
             }
 
-            Text(
-                text = WindFarmMetricTransparency.NOISE,
-                fontSize = 10.sp,
-                color = Color(0xFF9AA290),
-                lineHeight = 13.sp,
-            )
+
         }
     }
 }
@@ -927,8 +1051,7 @@ private fun TransparencySummaryCard() {
             TransparencyRow("CO2", WindFarmMetricTransparency.CO2_SAVINGS)
             TransparencyRow("Lokaler Anteil", WindFarmMetricTransparency.LOCAL_ENERGY)
             TransparencyRow("Kommunale Einnahmen", WindFarmMetricTransparency.MUNICIPAL_REVENUE)
-            TransparencyRow("Windstarke", WindFarmMetricTransparency.WIND_SPEED)
-            TransparencyRow("Larm", WindFarmMetricTransparency.NOISE)
+            TransparencyRow("Windstärke", WindFarmMetricTransparency.WIND_SPEED)
         }
     }
 }

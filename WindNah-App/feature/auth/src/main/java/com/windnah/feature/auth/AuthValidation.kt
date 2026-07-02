@@ -39,12 +39,16 @@ internal fun AuthErrorReason.toFriendlyAuthMessage(): String =
     when (this) {
         AuthErrorReason.InvalidCredentials ->
             "E-Mail oder Passwort stimmt nicht. Bitte pr\u00fcfen Sie Ihre Eingaben."
+        AuthErrorReason.InvalidEmail ->
+            InvalidEmailMessage
         AuthErrorReason.AccountNotFound ->
             "Zu dieser E-Mail-Adresse existiert noch kein Konto. M\u00f6chten Sie sich registrieren?"
         AuthErrorReason.EmailAlreadyInUse ->
             "Zu dieser E-Mail-Adresse existiert bereits ein Konto. Bitte melden Sie sich an."
         AuthErrorReason.WeakPassword ->
             "Das Passwort ist zu schwach. Bitte w\u00e4hlen Sie ein st\u00e4rkeres Passwort."
+        AuthErrorReason.RequiresRecentLogin ->
+            "Bitte melden Sie sich erneut an und versuchen Sie es noch einmal."
         AuthErrorReason.Network ->
             "Keine Verbindung. Bitte pr\u00fcfen Sie Ihre Internetverbindung."
         AuthErrorReason.NotConfigured ->

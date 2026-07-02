@@ -149,7 +149,6 @@ private val FigmaHorizontalEnd = 13.dp
 private val FigmaSearchHeight = 56.dp
 private val FigmaFilterSpacing = 13.dp
 private val FigmaFilterHeight = 32.dp
-private val FigmaSnackbarBottom = 30.dp
 
 @Composable
 fun DiscoverScreen(
@@ -799,58 +798,60 @@ private fun BottomOverlay(
     modifier: Modifier = Modifier,
 ) {
     var showMarkerHint by remember { mutableStateOf(true) }
+    val locationButtonSize = 56.dp
+    val markerHintHeight = 32.dp
+    val markerHintBottomPadding = (locationButtonSize - markerHintHeight) / 2
 
     Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = FigmaHorizontalStart, vertical = 20.dp),
-    ) {
-        if (uiState.windFarms.isNotEmpty() && showMarkerHint) {
-            MarkerHintSnackbar(
-                text = "Marker antippen für Details",
-                onDismiss = { showMarkerHint = false },
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = FigmaSnackbarBottom),
-            )
-        }
-
-        Column(
-            modifier = Modifier.align(Alignment.BottomEnd),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            horizontalAlignment = Alignment.End,
-        ) {
-            FloatingMapAction(
-                icon = Icons.Outlined.MyLocation,
-                contentDescription = "Auf meinen Standort zentrieren",
-                onClick = {
-                    if (!uiState.hasLocationPermission) {
-                        onRequestLocationPermission()
-                    } else if (!uiState.isLocationUsageEnabled) {
-                        onEnableLocationUsageAndRecenter()
-                    } else {
-                        onRecenter()
-                    }
-                },
-                enabled = !uiState.isResolvingCurrentLocation,
-                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                isLoading = uiState.isResolvingCurrentLocation,
-            )
-        }
+    modifier = modifier
+        .fillMaxWidth()
+        .padding(horizontal = FigmaHorizontalStart, vertical = 20.dp),
+) {
+    if (uiState.windFarms.isNotEmpty() && showMarkerHint) {
+        MarkerHintSnackbar(
+            text = "Marker antippen für Details",
+            onDismiss = { showMarkerHint = false },
+            height = markerHintHeight,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = markerHintBottomPadding),
+        )
     }
+
+    FloatingMapAction(
+        icon = Icons.Outlined.MyLocation,
+        contentDescription = "Auf meinen Standort zentrieren",
+        onClick = {
+            if (!uiState.hasLocationPermission) {
+                onRequestLocationPermission()
+            } else if (!uiState.isLocationUsageEnabled) {
+                onEnableLocationUsageAndRecenter()
+            } else {
+                onRecenter()
+            }
+        },
+        enabled = !uiState.isResolvingCurrentLocation,
+        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        isLoading = uiState.isResolvingCurrentLocation,
+        size = locationButtonSize,
+        modifier = Modifier.align(Alignment.BottomEnd),
+    )
 }
+    }
+
 
 @Composable
 private fun MarkerHintSnackbar(
     text: String,
     onDismiss: () -> Unit,
+    height: androidx.compose.ui.unit.Dp,
     modifier: Modifier = Modifier,
 ) {
     Box(
         modifier = modifier
             .widthIn(min = 181.dp, max = 280.dp)
-            .height(32.dp)
+            .height(height)
             .background(
                 color = MaterialTheme.colorScheme.secondary,
                 shape = RoundedCornerShape(16.dp),

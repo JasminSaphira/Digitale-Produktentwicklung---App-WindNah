@@ -198,7 +198,7 @@ object WindFarmMetricTransparency {
     const val LOCAL_ENERGY = "Geschatzte lokale Nachfrage auf Basis von 1.900 Vollaststunden und einem Gemeinde-Verbrauchsmodell. Aktualisierung: monatlich."
     const val MUNICIPAL_REVENUE = "EEG-§6-Richtwert von 0,2 ct/kWh auf die Jahresproduktion. Aktualisierung: monatlich."
     const val WIND_SPEED = "DWD/BrightSky-Livedaten. Aktualisierung: alle 15 Minuten."
-    const val NOISE = "Bildungsorientierte Larmschatzung auf 500 m Referenzdistanz. Aktualisierung: alle 15 Minuten."
+
 }
 
 class CalculateCurrentOutputUseCase @Inject constructor() {
